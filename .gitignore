@@ -1,0 +1,35 @@
+# ===========================================================================
+# TORQUE WRENCHTIMEPRO - MASTER GITIGNORE FILE
+# ===========================================================================
+
+# Gradle Build and Cache Artifacts
+.gradle/
+build/
+app/build/
+.modules/
+
+# Compiled Binary Outputs & Android Packages
+*.apk
+*.aar
+*.ap_
+*.dex
+bin/
+gen/
+
+# Eclipse IDE Specific Local Metadata Files
+.metadata/
+.local_build_properties
+.settings/
+.project
+.classpath
+
+# Architecture & Build Engine Specifics
+local.properties
+
+# Log Files and Execution Dumps
+*.log
+.gradle-progress-*
+
+# OS Generated System Indexes
+.DS_Store
+Thumbs.db
