@@ -1,15 +1,17 @@
 plugins {
-    id 'com.android.application'
+    id 'com.android.application' version '9.1.1'
 }
 
+// Explicitly define the system requirements for a single-module project structure
 android {
     namespace 'org.tgallagherm.torque.wrenchtimepro'
-    compileSdk 34
+    compileSdk "android-37.0"
+    buildToolsVersion "37.0.0"
 
     defaultConfig {
         applicationId "org.tgallagherm.torque.wrenchtimepro"
         minSdk 26
-        targetSdk 34
+        targetSdk 37
         versionCode 1
         versionName "1.0.0"
     }
@@ -17,6 +19,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     
