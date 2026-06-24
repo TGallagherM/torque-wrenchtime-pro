@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<application
+		android:allowBackup="true"
+		android:label="Torque WrenchTimePro"
+		android:supportsRtl="true">
+
+		<activity
+			android:name="org.tgallagherm.torque.wrenchtimepro.PluginActivity"
+			android:exported="true"
+			android:label="WrenchTimePro Reminders">
+			
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+			
+			<intent-filter>
+				<action android:name="org.prowl.torque.PLUGIN" />
+			</intent-filter>
+		</activity>
+
+	</application>
+</manifest>
