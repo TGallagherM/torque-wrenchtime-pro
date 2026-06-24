@@ -1,88 +1,93 @@
 package org.tgallagherm.torque.wrenchtimepro;
 
 import android.app.Activity;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.IBinder;
-import android.os.RemoteException;
-import android.widget.Toast;
-import org.prowl.torque.remote.ITorqueService;
+import android.widget.TextView;
+import java.util.ArrayList;
+import java.util.List;
 
-/**
- * REVISION HISTORY
- * ---------------------------------------------------------------------------
- * Version | Date       | Author       | Description
- * 1.0.0   | 2026-06-24 | TGallagherM  | Base Torque service mapping connection.
- * ---------------------------------------------------------------------------
- */
 public class PluginActivity extends Activity {
 
-    private ITorqueService torqueService = null;
-    private boolean isBound = false;
+    // Using a simple TextView to output the structured manufacturer details
+    private TextView infoTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // We will define this UI layout file in the next step
-        setContentView(ResourceUtils.getLayoutId(this, "activity_main"));
+        
+        // Ensure you have an activity_main.xml layout with a TextView id: vehicle_info_text
+        setContentView(R.layout.activity_main);
+        
+        initializeViews();
+        displayVehicleData();
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        bindToTorqueService();
+    /**
+     * Initializes the UI components.
+     */
+    private void initializeViews() {
+        infoTextView = findViewById(R.id.vehicle_info_text);
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        unbindFromTorqueService();
+    /**
+     * Orchestrates gathering and rendering the data.
+     */
+    private void displayVehicleData() {
+        List<Manufacturer> manufacturers = loadManufacturerSpecifications();
+        String formattedOutput = formatManufacturerDetails(manufacturers);
+        infoTextView.setText(formattedOutput);
     }
 
-    private final ServiceConnection serviceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            torqueService = ITorqueService.Stub.asInterface(service);
-            isBound = true;
-            onTorqueConnected();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            torqueService = null;
-            isBound = false;
-        }
-    };
-
-    private void bindToTorqueService() {
-        Intent intent = new Intent();
-        intent.setClassName("org.prowl.torque", "org.prowl.torque.remote.TorqueService");
-        try {
-            if (!bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)) {
-                Toast.makeText(this, "Torque Pro instance not detected.", Toast.LENGTH_SHORT).show();
-            }
-        } catch (SecurityException e) {
-            Toast.makeText(this, "Binding security fault: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
+    /**
+     * Data Layer: Generates the list of vehicle manufacturers.
+     * Modular: Add new manufacturers or models by appending items to this list.
+     */
+    private List<Manufacturer> loadManufacturerSpecifications() {
+        List<Manufacturer> list = new ArrayList<>();
+        
+        // Base technical details derived from standard manufacturer references
+        list.add(new Manufacturer("Toyota", "Japan", "Global"));
+        list.add(new Manufacturer("Ford", "USA", "Global"));
+        list.add(new Manufacturer("General Motors", "USA", "Global"));
+        
+        return list;
     }
 
-    private void unbindFromTorqueService() {
-        if (isBound) {
-            unbindService(serviceConnection);
-            isBound = false;
+    /**
+     * Presentation Layer: Transforms the data structures into clear, scannable text.
+     * Modular: Adjust this function to change how information layout appears on screen.
+     */
+    private String formatManufacturerDetails(List<Manufacturer> manufacturers) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Vehicle Manufacturer Directory ===\n\n");
+        
+        for (Manufacturer maker : manufacturers) {
+            sb.append("Brand: ").append(maker.getName()).append("\n")
+              .append("Headquarters: ").append(maker.getHeadquarters()).append("\n")
+              .append("Market Scope: ").append(maker.getMarketScope()).append("\n")
+              .append("-----------------------------------\n");
         }
+        
+        return sb.toString();
     }
 
-    private void onTorqueConnected() {
-        try {
-            int torqueVersion = torqueService.getVersion();
-            Toast.makeText(this, "WrenchTimePro linked to Torque v" + torqueVersion, Toast.LENGTH_SHORT).show();
-            // This is where we will eventually read real-time PIDs (like Odometer) to match against your maintenance milestones
-        } catch (RemoteException e) {
-            e.printStackTrace();
+    /**
+     * Inner Data Model representing basic Manufacturer metrics.
+     * Modular: Expand fields here (e.g., specific torque specs, fastener lists) to grow features.
+     */
+    public static class Manufacturer {
+        private final String name;
+        private final String headquarters;
+        private final String marketScope;
+
+        public Manufacturer(String name, String headquarters, String marketScope) {
+            this.name = name;
+            this.headquarters = headquarters;
+            this.marketScope = marketScope;
         }
+
+        public String getName() { return name; }
+        public String getHeadquarters() { return headquarters; }
+        public String getMarketScope() { return marketScope; }
     }
 }

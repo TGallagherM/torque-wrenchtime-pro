@@ -1,11 +1,20 @@
-plugins {
-    id 'com.android.application' version '9.1.1'
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        // This binds the class directly to the root evaluation lifecycle
+        classpath 'com.android.tools.build:gradle:9.1.1'
+    }
 }
 
-// Explicitly define the system requirements for a single-module project structure
+// Apply the plugin sequentially rather than via the isolated plugins DSL block
+apply plugin: 'com.android.application'
+
 android {
     namespace 'org.tgallagherm.torque.wrenchtimepro'
-    compileSdk "android-37.0"
+    compileSdk 37
     buildToolsVersion "37.0.0"
 
     defaultConfig {

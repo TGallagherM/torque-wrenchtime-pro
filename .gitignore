@@ -8,6 +8,12 @@ build/
 app/build/
 .modules/
 
+# Secrets, API Keys, and Credentials
+*secret*
+*key*
+*.keystore
+*.jks
+
 # Compiled Binary Outputs & Android Packages
 *.apk
 *.aar
@@ -25,6 +31,7 @@ gen/
 
 # Architecture & Build Engine Specifics
 local.properties
+gradle.properties
 
 # Log Files and Execution Dumps
 *.log
