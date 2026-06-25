@@ -22,4 +22,7 @@
 		</activity>
 
 	</application>
+	<queries>
+		<package android:name="org.prowl.torque" />
+	</queries>
 </manifest>
