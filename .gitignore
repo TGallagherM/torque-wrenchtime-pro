@@ -40,3 +40,15 @@ gradle.properties
 # OS Generated System Indexes
 .DS_Store
 Thumbs.db
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+out/
+
+# Gradle Wrapper
+gradle-wrapper.jar
+gradlew
+gradlew.bat
+gradle-daemon-jvm.properties
