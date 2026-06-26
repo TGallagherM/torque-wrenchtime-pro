@@ -21,6 +21,18 @@
 				<action android:name="org.prowl.torque.PLUGIN" />
 				<category android:name="android.intent.category.DEFAULT" />
 			</intent-filter>
+
+			<intent-filter>
+				<action android:name="org.prowl.torque.ACTIVITY_PLUGIN" />
+			</intent-filter>
+
+			<intent-filter>
+				<action android:name="org.prowl.torque.PID_PLUGIN" />
+			</intent-filter>
+
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+			</intent-filter>
 		</activity>
 
 	</application>
