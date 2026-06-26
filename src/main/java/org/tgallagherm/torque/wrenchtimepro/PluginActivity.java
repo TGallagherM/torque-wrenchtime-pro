@@ -69,6 +69,18 @@ public class PluginActivity extends Activity {
     private void displayToUI(final String message) {
         runOnUiThread(() -> {
             if (infoTextView != null) {
+                infoTextView.setText(message);
+            }
+        });
+    }
+
+    /**
+     * Helper to append text to the UI TextView.
+     * Use this for modular data updates after the initial display.
+     */
+    private void appendToUI(final String message) {
+        runOnUiThread(() -> {
+            if (infoTextView != null) {
                 infoTextView.append("\n" + message);
             }
         });
@@ -98,11 +110,11 @@ public class PluginActivity extends Activity {
                 sb.append("VIN: Not detected (Ensure ECU is connected)\n");
             }
 
-            displayToUI(sb.toString());
+            appendToUI(sb.toString());
 
         } catch (RemoteException e) {
             Log.e(TAG, "Failed to gather physical manufacturer data", e);
-            displayToUI("Error retrieving vehicle specification data.");
+            appendToUI("Error retrieving vehicle specification data.");
         }
     }
 
@@ -142,7 +154,8 @@ public class PluginActivity extends Activity {
             String[] profile = torqueService.getVehicleProfileInformation();
             if (profile != null && profile.length > 0) {
                 String profileName = profile[0];
-                infoTextView.append("\n\nConnected to Torque Profile: " + profileName);
+                // Use displayToUI to clear the "Hello" message and start fresh
+                displayToUI("Connected to Torque Profile: " + profileName);
             }
         } catch (RemoteException e) {
             Log.e(TAG, "Failed to get vehicle profile information", e);
@@ -220,7 +233,8 @@ public class PluginActivity extends Activity {
         String unit = torqueService.getPreferredUnit("km");
         // Use java.util.Locale.US to ensure consistent formatting
         String formattedValue = String.format(Locale.US, "%.2f", value);
-        displayToUI(label + ": " + formattedValue + " " + unit);
+        // Use appendToUI to add to the existing vehicle report
+        appendToUI(label + ": " + formattedValue + " " + unit);
     }
 
     /**
@@ -238,9 +252,9 @@ public class PluginActivity extends Activity {
             torqueService = ITorqueService.Stub.asInterface(service);
 
             // Explicitly trigger data gathering once the connection is established
-            updateWithRealData();
-            gatherManufacturerData();
-            updateDistanceTracked();
+            updateWithRealData();     // Clears "Hello" and starts the report
+            gatherManufacturerData(); // Appends manufacturer info
+            updateDistanceTracked();  // Appends distance info
         }
 
         @Override
