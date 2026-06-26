@@ -16,11 +16,11 @@ import android.widget.TextView;
 
 public class PluginActivity extends Activity {
 
+    private boolean isBound = false;
     // Using a simple TextView to output the structured manufacturer details
     private TextView infoTextView;
     private ITorqueService torqueService;
     private static final String TAG = "WrenchTimePro";
-
     private static final String DISTANCE_PID = "0131"; // PID for Distance traveled since codes cleared
 
     @Override
@@ -43,14 +43,16 @@ public class PluginActivity extends Activity {
         Intent intent = new Intent();
         // Torque app package name and the service action
         intent.setClassName("org.prowl.torque", "org.prowl.torque.remote.TorqueService");
-        boolean ok = bindService(intent, connection, BIND_AUTO_CREATE);
+        isBound = bindService(intent, connection, BIND_AUTO_CREATE);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        if (torqueService != null) {
+        if (isBound) {
             unbindService(connection);
+            isBound = false;
+            torqueService = null;
         }
     }
 
@@ -209,9 +211,13 @@ public class PluginActivity extends Activity {
      */
     private void displayDistance(String label, double value) throws RemoteException {
         String unit = torqueService.getPreferredUnit("km");
-        // Use java.util.Locale.US to ensure consistent formatting
-        String formattedValue = String.format(Locale.US, "%.2f", value);
-        // Use appendToUI to add to the existing vehicle report
+        double displayValue = value;
+        // If the user's preferred unit is miles, convert km to miles
+        if (unit != null && unit.equalsIgnoreCase("miles")) {
+            displayValue = value * 0.62137119;
+        }
+
+        String formattedValue = String.format(Locale.US, "%.2f", displayValue);
         appendToUI(label + ": " + formattedValue + " " + unit);
     }
 
@@ -220,10 +226,12 @@ public class PluginActivity extends Activity {
         public void onServiceConnected(ComponentName arg0, IBinder service) {
             torqueService = ITorqueService.Stub.asInterface(service);
 
+            new Thread(() -> {
             // Explicitly trigger data gathering once the connection is established
             updateWithRealData();     // Clears "Hello" and starts the report
             gatherManufacturerData(); // Appends manufacturer info
             updateDistanceTracked();  // Appends distance info
+            }).start();
         }
 
         @Override
