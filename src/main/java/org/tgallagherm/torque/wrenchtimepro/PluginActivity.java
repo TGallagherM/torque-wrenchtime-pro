@@ -5,14 +5,18 @@ import java.util.Locale;
 import org.prowl.torque.remote.ITorqueService;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
 import android.widget.TextView;
+import androidx.core.content.ContextCompat;
 
 public class PluginActivity extends Activity {
 
@@ -43,12 +47,28 @@ public class PluginActivity extends Activity {
         Intent intent = new Intent();
         // Torque app package name and the service action
         intent.setClassName("org.prowl.torque", "org.prowl.torque.remote.TorqueService");
-        isBound = bindService(intent, connection, BIND_AUTO_CREATE);
+        isBound = bindService(intent, connection, 0);
+
+        // Register the Torque broadcast receiver when the activity gains focus
+        IntentFilter filter = new IntentFilter("org.prowl.torque.ACTION_VEHICLE_UPDATED");
+        // Using ContextCompat automatically handles the flag logic across different API levels
+        ContextCompat.registerReceiver(
+                this,
+                torqueReceiver,
+                filter,
+                ContextCompat.RECEIVER_EXPORTED
+        );
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+
+        // Unregister immediately when the activity loses focus to prevent memory leaks
+        if (torqueReceiver != null) {
+            unregisterReceiver(torqueReceiver);
+        }
+
         if (isBound) {
             unbindService(connection);
             isBound = false;
@@ -153,7 +173,7 @@ public class PluginActivity extends Activity {
             if (profile != null && profile.length > 0) {
                 String profileName = profile[0];
                 // Use displayToUI to clear the "Hello" message and start fresh
-                displayToUI("Connected to Torque Profile: " + profileName);
+                displayToUI("Connected to Torque, Selected Profile: " + profileName);
             }
         } catch (RemoteException e) {
             Log.e(TAG, "Failed to get vehicle profile information", e);
@@ -230,13 +250,22 @@ public class PluginActivity extends Activity {
             // Explicitly trigger data gathering once the connection is established
             updateWithRealData();     // Clears "Hello" and starts the report
             gatherManufacturerData(); // Appends manufacturer info
-            updateDistanceTracked();  // Appends distance info
+//            updateDistanceTracked();  // Appends distance info
             }).start();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             torqueService = null;
+        }
+    };
+    private final BroadcastReceiver torqueReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if ("org.prowl.torque.ACTION_VEHICLE_UPDATED".equals(intent.getAction())) {
+                // Data cache has been updated, refresh your UI
+                gatherManufacturerData();
+            }
         }
     };
 }
