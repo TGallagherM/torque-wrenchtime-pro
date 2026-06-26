@@ -1,7 +1,6 @@
 package org.tgallagherm.torque.wrenchtimepro;
 
 import java.util.Locale;
-import java.util.List;
 
 import org.prowl.torque.remote.ITorqueService;
 
@@ -135,13 +134,10 @@ public class PluginActivity extends Activity {
         // 10: Model Year Code
         char yearCode = vin.charAt(9);
 
-        StringBuilder decoded = new StringBuilder();
-        decoded.append("--- Manufacturer Codes ---\n")
-                .append("Model Year Code: ").append(yearCode).append("\n")
-                .append("WMI (Manufacturer ID): ").append(wmi).append("\n")
-                .append("VDS (Trim/Body/Engine Codes): ").append(vds).append("\n");
-
-        return decoded.toString();
+        return "--- Manufacturer Codes ---\n" +
+                "Model Year Code: " + yearCode + "\n" +
+                "WMI (Manufacturer ID): " + wmi + "\n" +
+                "VDS (Trim/Body/Engine Codes): " + vds + "\n";
     }
 
     /**
@@ -160,24 +156,6 @@ public class PluginActivity extends Activity {
         } catch (RemoteException e) {
             Log.e(TAG, "Failed to get vehicle profile information", e);
         }
-    }
-
-    /**
-     * Presentation Layer: Transforms the data structures into clear, scannable text.
-     * Modular: Adjust this function to change how information layout appears on screen.
-     */
-    private String formatManufacturerDetails(List<Manufacturer> manufacturers) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("=== Vehicle Manufacturer Directory ===\n\n");
-        
-        for (Manufacturer maker : manufacturers) {
-            sb.append("Brand: ").append(maker.name()).append("\n")
-              .append("Headquarters: ").append(maker.headquarters()).append("\n")
-              .append("Market Scope: ").append(maker.marketScope()).append("\n")
-              .append("-----------------------------------\n");
-        }
-        
-        return sb.toString();
     }
 
     /**
@@ -237,15 +215,6 @@ public class PluginActivity extends Activity {
         appendToUI(label + ": " + formattedValue + " " + unit);
     }
 
-    /**
-     * Inner Data Model representing basic Manufacturer metrics.
-     * Modular: Expand fields here (e.g., specific torque specs, fastener lists) to grow features.
-     */
-    public record Manufacturer(String name, String headquarters, String marketScope) {}
-
-    /**
-     * Handles the connection lifecycle with the Torque service.
-     */
     private final ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName arg0, IBinder service) {
