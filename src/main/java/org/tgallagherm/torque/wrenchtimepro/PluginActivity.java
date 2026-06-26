@@ -65,9 +65,7 @@ public class PluginActivity extends Activity {
         super.onPause();
 
         // Unregister immediately when the activity loses focus to prevent memory leaks
-        if (torqueReceiver != null) {
-            unregisterReceiver(torqueReceiver);
-        }
+        unregisterReceiver(torqueReceiver);
 
         if (isBound) {
             unbindService(connection);
@@ -263,8 +261,10 @@ public class PluginActivity extends Activity {
         @Override
         public void onReceive(Context context, Intent intent) {
             if ("org.prowl.torque.ACTION_VEHICLE_UPDATED".equals(intent.getAction())) {
-                // Data cache has been updated, refresh your UI
-                gatherManufacturerData();
+                // Data cache has been updated, refresh UI, ECU connected
+                new Thread(() -> {
+                    gatherManufacturerData();
+                }).start();
             }
         }
     };
