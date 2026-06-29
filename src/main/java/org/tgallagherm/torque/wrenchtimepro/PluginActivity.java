@@ -48,7 +48,7 @@ public class PluginActivity extends Activity {
         Intent intent = new Intent();
         // Torque app package name and the service action
         intent.setClassName("org.prowl.torque", "org.prowl.torque.remote.TorqueService");
-        isBound = bindService(intent, connection, Context.BIND_AUTO_CREATE);
+        isBound = bindService(intent, connection, 0);
 
         // Register the Torque broadcast receiver when the activity gains focus
         IntentFilter filter = new IntentFilter();
@@ -113,7 +113,10 @@ public class PluginActivity extends Activity {
      * Gathers physical manufacturing details of the vehicle.
      */
     private void gatherManufacturerData() {
-        if (torqueService == null) return;
+        if (torqueService == null) {
+            displayToUI("Torque not ready to retrieve data",mileageTextView);
+            return;
+        }
 
         try {
             String[] profile = torqueService.getVehicleProfileInformation();
@@ -257,6 +260,7 @@ public class PluginActivity extends Activity {
             new Thread(() -> {
             // Explicitly trigger data gathering once the connection is established
                 getProfileData();     // Clears "Hello" and starts the report
+                gatherManufacturerData(); // Appends manufacturer info
             }).start();
         }
 
@@ -273,12 +277,14 @@ public class PluginActivity extends Activity {
                 // Just connected to adapter, refresh UI, ECU connected
                 new Thread(() -> {
                     gatherManufacturerData(); // Appends manufacturer info
-                    updateDistanceTracked(); // Appends distance info
+//                    updateDistanceTracked(); // Appends distance info
                 }).start();
             } else if ("org.prowl.torque.PROFILE_CHANGED".equals(action)) {
                 // Vehicle profile switched
-                gatherManufacturerData(); // Appends manufacturer info
-                updateDistanceTracked(); // Appends distance info
+                new Thread(() -> {
+                    gatherManufacturerData(); // Appends manufacturer info
+//                    updateDistanceTracked(); // Appends distance info
+                }).start();
             }
         }
     };
