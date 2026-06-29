@@ -224,7 +224,7 @@ public class PluginActivity extends Activity {
                     displayDistance("Distance (Trip)", tripValues[0]);
                 }
             } else {
-                displayToUI("Distance tracking not available.",vehicleInfoTextView);
+                displayToUI("Distance tracking not available.",mileageTextView);
             }
 
         } catch (Exception e) {
