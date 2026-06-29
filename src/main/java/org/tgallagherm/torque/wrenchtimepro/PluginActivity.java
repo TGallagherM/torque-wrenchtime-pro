@@ -48,10 +48,12 @@ public class PluginActivity extends Activity {
         Intent intent = new Intent();
         // Torque app package name and the service action
         intent.setClassName("org.prowl.torque", "org.prowl.torque.remote.TorqueService");
-        isBound = bindService(intent, connection, 0);
+        isBound = bindService(intent, connection, Context.BIND_AUTO_CREATE);
 
         // Register the Torque broadcast receiver when the activity gains focus
-        IntentFilter filter = new IntentFilter("org.prowl.torque.ACTION_VEHICLE_UPDATED");
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("org.prowl.torque.ACTION_VEHICLE_UPDATED");
+        filter.addAction("org.prowl.torque.PROFILE_CHANGED");
         // Using ContextCompat automatically handles the flag logic across different API levels
         ContextCompat.registerReceiver(
                 this,
@@ -174,7 +176,7 @@ public class PluginActivity extends Activity {
             if (profile != null && profile.length > 0) {
                 displayToUI("Connected to Torque",vehicleInfoTextView);
                 for (String data: profile) {
-                    displayToUI("Profile data[" + index + "]: " + data,vehicleInfoTextView);
+                    appendToUI("Profile data[" + index + "]: " + data,vehicleInfoTextView);
                     index++;
                 }
 //                String profileName = profile[0];
@@ -254,7 +256,7 @@ public class PluginActivity extends Activity {
 
             new Thread(() -> {
             // Explicitly trigger data gathering once the connection is established
-            getProfileData();     // Clears "Hello" and starts the report
+                getProfileData();     // Clears "Hello" and starts the report
             }).start();
         }
 
@@ -266,12 +268,17 @@ public class PluginActivity extends Activity {
     private final BroadcastReceiver torqueReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if ("org.prowl.torque.ACTION_VEHICLE_UPDATED".equals(intent.getAction())) {
-                // Data cache has been updated, refresh UI, ECU connected
+            String action = intent.getAction();
+            if ("org.prowl.torque.ACTION_VEHICLE_UPDATED".equals(action)) {
+                // Just connected to adapter, refresh UI, ECU connected
                 new Thread(() -> {
                     gatherManufacturerData(); // Appends manufacturer info
                     updateDistanceTracked(); // Appends distance info
                 }).start();
+            } else if ("org.prowl.torque.PROFILE_CHANGED".equals(action)) {
+                // Vehicle profile switched
+                gatherManufacturerData(); // Appends manufacturer info
+                updateDistanceTracked(); // Appends distance info
             }
         }
     };
