@@ -127,6 +127,7 @@ public class PluginActivity extends Activity {
             String vin = torqueService.retrieveProfileData("org.prowl.torque.VIN");
             String[] rawVin = torqueService.getPIDRawResponse("0902");
             String[] forcedResponse = torqueService.sendCommandGetResponse("7DF", "0902");
+            String[] combinedResponse= torqueService.recombineResponses(forcedResponse);
 
             String decodedVin = "";
 
@@ -138,10 +139,19 @@ public class PluginActivity extends Activity {
                 sb.append("VIN: ").append(vin).append("\n\n")
                         .append(parseVinData(vin)); // Extract manufacturer details from VIN
             } else if (rawVin != null && rawVin.length > 0 && !rawVin[0].contains("NOT READY")) {
-                decodedVin = decodeVIN(rawVin);
-                sb.append("\n\n").append("rawVIN mode 09 PID 02 (Decoded): ").append(decodedVin).append("\n\n")
-                        .append(parseVinData(decodedVin));
+                sb.append("\n\n").append("rawVIN mode 09 PID 02: ").append(rawVin[0]).append(rawVin[1]);
+//                decodedVin = decodeVIN(rawVin);
+//                sb.append("\n\n").append("rawVIN mode 09 PID 02 (Decoded): ").append(decodedVin).append("\n\n")
+//                        .append(parseVinData(decodedVin));
             } else if (forcedResponse != null && forcedResponse.length > 0) {
+                sb.append("\n\n").append("forceVIN mode 09 PID 02: ");
+                for (String hex : forcedResponse){
+                    sb.append(hex).append(" ");
+                }
+                sb.append("\n\n").append("recombined mode 09 PID 02: ");
+                for (String hex : combinedResponse){
+                    sb.append(hex).append(" ");
+                }
                 decodedVin = decodeVIN(forcedResponse);
                 sb.append("\n\n").append("forceVIN mode 09 PID 02 (Decoded): ").append(decodedVin).append("\n\n")
                         .append(parseVinData(decodedVin));
@@ -191,22 +201,11 @@ public class PluginActivity extends Activity {
 
         StringBuilder combinedHex = new StringBuilder();
 
-        // 1. Clean and combine the hex segments
-        for (String s : hexVIN) {
-            if (s == null || s.contains("NOT READY")) continue;
-
-            // Strip the multi-frame index (e.g., "0:", "1:")
-            if (s.contains(":")) {
-                s = s.substring(s.indexOf(":") + 1);
-            }
-
-            // Strip the OBD Mode 09 PID 02 header (4902) and data count (01)
-            // This is usually at the start of the payload in the first frame
-            if (s.startsWith("490201")) {
-                s = s.substring(6);
-            }
-
-            combinedHex.append(s);
+        if(hexVIN[0].contains("014")) {
+            // 1. Clean and combine the hex segments
+            combinedHex.append(hexVIN[1].substring(hexVIN[1].indexOf("0:490201") + 8));
+            combinedHex.append(hexVIN[2].substring(hexVIN[2].indexOf("1:") + 2));
+            combinedHex.append(hexVIN[3].substring(hexVIN[3].indexOf("2:") + 2));
         }
 
         // 2. Decode hex string into ASCII characters
