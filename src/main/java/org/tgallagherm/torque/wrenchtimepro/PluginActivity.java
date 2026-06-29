@@ -23,6 +23,7 @@ public class PluginActivity extends Activity {
     private boolean isBound = false;
     // Using a simple TextView to output the structured manufacturer details
     private TextView vehicleInfoTextView;
+    private TextView mileageTextView;
     private ITorqueService torqueService;
     private static final String TAG = "WrenchTimePro";
     private static final String DISTANCE_PID = "0131"; // PID for Distance traveled since codes cleared
