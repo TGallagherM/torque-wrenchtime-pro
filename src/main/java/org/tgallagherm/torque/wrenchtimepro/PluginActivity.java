@@ -16,6 +16,7 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
 import android.widget.TextView;
+
 import androidx.core.content.ContextCompat;
 
 public class PluginActivity extends Activity {
@@ -38,7 +39,7 @@ public class PluginActivity extends Activity {
         initializeViews();
 
         // Methods to run when the activity is created
-        displayToUI("Hello from WrenchTimePro!",vehicleInfoTextView);
+        displayToUI("Hello from WrenchTimePro!", vehicleInfoTextView);
 //        gatherManufacturerData();
     }
 
@@ -114,7 +115,7 @@ public class PluginActivity extends Activity {
      */
     private void gatherManufacturerData() {
         if (torqueService == null) {
-            displayToUI("Torque not ready to retrieve data",mileageTextView);
+            displayToUI("Torque not ready to retrieve data", mileageTextView);
             return;
         }
 
@@ -127,6 +128,8 @@ public class PluginActivity extends Activity {
             String[] rawVin = torqueService.getPIDRawResponse("0902");
             String[] forcedResponse = torqueService.sendCommandGetResponse("7DF", "0902");
 
+            String decodedVin = "";
+
             StringBuilder sb = new StringBuilder();
             sb.append("=== Physical Vehicle Specifications ===\n\n")
                     .append("Registered Profile: ").append(profileName).append("\n");
@@ -134,71 +137,23 @@ public class PluginActivity extends Activity {
             if (vin != null && !vin.isEmpty()) {
                 sb.append("VIN: ").append(vin).append("\n\n")
                         .append(parseVinData(vin)); // Extract manufacturer details from VIN
-            }
-            else if(rawVin != null && rawVin.length > 0 && !rawVin[0].contains("NOT READY") ) {
-                int index = 0;
-                StringBuilder vinBuilder = new StringBuilder();
-                sb.append("rawVIN:");
-                for (String hex : rawVin) {
-                    sb.append("index").append(index).append(" ").append(hex);
-                    index++;
-                    // Step through the string 2 characters at a time (1 hex byte)
-                    for (int i = 0; i < hex.length() - 1; i += 2) {
-                        try {
-                            // Convert hex to decimal, then to a character
-                            char c = (char) Integer.parseInt(hex.substring(i, i + 2), 16);
-                            vinBuilder.append(c);
-                        } catch (Exception e) {
-                            // Skip if the substring isn't valid hex
-                        }
-                    }
-                }
-                String decodedVin = vinBuilder.toString().trim();
+            } else if (rawVin != null && rawVin.length > 0 && !rawVin[0].contains("NOT READY")) {
+                decodedVin = decodeVIN(rawVin);
                 sb.append("\n\n").append("rawVIN mode 09 PID 02 (Decoded): ").append(decodedVin).append("\n\n")
                         .append(parseVinData(decodedVin));
-            }
-            else {
-                for (int i = 0; i < 5; i++) {
-                    sb.append("rawVIN wait\n");
-                    rawVin = torqueService.getPIDRawResponse("0902");
-                    if (rawVin != null && rawVin.length > 0 && !rawVin[0].contains("NOT READY")) {
-                        sb.append("rawVIN found ").append(rawVin[0]);
-                        break;
-                    }
-                    try {
-                        Thread.sleep(1000); // Wait 1 second between retries
-                    } catch (Exception e) {
-                        // Skip if the substring isn't valid hex
-                    }
-                }
-                for (int i = 0; i < 5; i++) {
-                    sb.append("forcedVIN wait\n");
-                    forcedResponse = torqueService.sendCommandGetResponse("7DF", "0902");
-                    if (forcedResponse != null && forcedResponse.length > 0 ) {
-                        sb.append("forcedVIN found :");
-                        int index = 0;
-                        for (String hex : forcedResponse) {
-                            sb.append("index").append(index).append(" ").append(hex);
-                            index++;
-                        }
-                        sb.append("\n");
-                        break;
-                    }
-                    try {
-                        Thread.sleep(1000); // Wait 1 second between retries
-                    } catch (Exception e) {
-                        // Skip if the substring isn't valid hex
-                    }
-                }
-
+            } else if (forcedResponse != null && forcedResponse.length > 0) {
+                decodedVin = decodeVIN(forcedResponse);
+                sb.append("\n\n").append("forceVIN mode 09 PID 02 (Decoded): ").append(decodedVin).append("\n\n")
+                        .append(parseVinData(decodedVin));
+            } else {
                 sb.append("VIN: Not detected (Ensure ECU is connected and vehicle supports Mode 09 PID 02)\n");
             }
 
-            appendToUI(sb.toString(),mileageTextView);
+            appendToUI(sb.toString(), mileageTextView);
 
         } catch (RemoteException e) {
             Log.e(TAG, "Failed to gather physical manufacturer data", e);
-            appendToUI("Error retrieving vehicle specification data.",mileageTextView);
+            appendToUI("Error retrieving vehicle specification data.", mileageTextView);
         }
     }
 
@@ -225,6 +180,32 @@ public class PluginActivity extends Activity {
                 "VDS (Trim/Body/Engine Codes): " + vds + "\n";
     }
 
+    private String decodeVIN(String[] hexVIN){
+        String decodedVin = "";
+
+        if(hexVIN != null && hexVIN.length == 16){
+            StringBuilder vinBuilder = new StringBuilder();
+            for (String hex : hexVIN) {
+                // Step through the string 2 characters at a time (1 hex byte)
+                for (int i = 0; i < hex.length() - 1; i += 2) {
+                    try {
+                        // Convert hex to decimal, then to a character
+                        char c = (char) Integer.parseInt(hex.substring(i, i + 2), 16);
+                        vinBuilder.append(c);
+                    } catch (Exception e) {
+                        // Skip if the substring isn't valid hex
+                    }
+                }
+            }
+            decodedVin = vinBuilder.toString().trim();
+        }
+        else {
+            decodedVin = "hexVin cannot be decoded";
+        }
+
+        return decodedVin;
+    }
+
     /**
      * Fetches real-time data from the Torque app via the AIDL interface.
      */
@@ -235,9 +216,9 @@ public class PluginActivity extends Activity {
             String[] profile = torqueService.getVehicleProfileInformation();
             int index = 0;
             if (profile != null && profile.length > 0) {
-                displayToUI("Connected to Torque",vehicleInfoTextView);
-                for (String data: profile) {
-                    appendToUI("Profile data[" + index + "]: " + data,vehicleInfoTextView);
+                displayToUI("Connected to Torque", vehicleInfoTextView);
+                for (String data : profile) {
+                    appendToUI("Profile data[" + index + "]: " + data, vehicleInfoTextView);
                     index++;
                 }
 //                String profileName = profile[0];
@@ -287,7 +268,7 @@ public class PluginActivity extends Activity {
                     displayDistance("Distance (Trip)", tripValues[0]);
                 }
             } else {
-                displayToUI("Distance tracking not available.",mileageTextView);
+                displayToUI("Distance tracking not available.", mileageTextView);
             }
 
         } catch (Exception e) {
@@ -307,7 +288,7 @@ public class PluginActivity extends Activity {
         }
 
         String formattedValue = String.format(Locale.US, "%.2f", displayValue);
-        appendToUI(label + ": " + formattedValue + " " + unit,mileageTextView);
+        appendToUI(label + ": " + formattedValue + " " + unit, mileageTextView);
     }
 
     private final ServiceConnection connection = new ServiceConnection() {
@@ -316,7 +297,7 @@ public class PluginActivity extends Activity {
             torqueService = ITorqueService.Stub.asInterface(service);
 
             new Thread(() -> {
-            // Explicitly trigger data gathering once the connection is established
+                // Explicitly trigger data gathering once the connection is established
                 getProfileData();     // Clears "Hello" and starts the report
                 gatherManufacturerData(); // Appends manufacturer info
             }).start();
