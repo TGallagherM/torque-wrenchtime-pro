@@ -111,131 +111,6 @@ public class PluginActivity extends Activity {
     }
 
     /**
-     * Gathers physical manufacturing details of the vehicle.
-     */
-    private void gatherManufacturerData() {
-        if (torqueService == null) {
-            displayToUI("Torque not ready to retrieve data", mileageTextView);
-            return;
-        }
-
-        try {
-            String[] profile = torqueService.getVehicleProfileInformation();
-            String profileName = (profile != null && profile.length > 0) ? profile[0] : "Unknown";
-
-            // Retrieve the VIN from the profile data
-            String vin = torqueService.retrieveProfileData("org.prowl.torque.VIN");
-            String[] rawVin = torqueService.getPIDRawResponse("0902");
-            String[] forcedResponse = torqueService.sendCommandGetResponse("7DF", "0902");
-            String[] combinedResponse= torqueService.recombineResponses(forcedResponse);
-
-            String decodedVin = "";
-
-            StringBuilder sb = new StringBuilder();
-            sb.append("=== Physical Vehicle Specifications ===\n\n")
-                    .append("Registered Profile: ").append(profileName).append("\n");
-
-            if (vin != null && !vin.isEmpty()) {
-                sb.append("VIN: ").append(vin).append("\n\n")
-                        .append(parseVinData(vin)); // Extract manufacturer details from VIN
-            } else if (rawVin != null && rawVin.length > 0 && !rawVin[0].contains("NOT READY")) {
-                sb.append("\n\n").append("rawVIN mode 09 PID 02: ").append(rawVin[0]).append(rawVin[1]);
-//                decodedVin = decodeVIN(rawVin);
-//                sb.append("\n\n").append("rawVIN mode 09 PID 02 (Decoded): ").append(decodedVin).append("\n\n")
-//                        .append(parseVinData(decodedVin));
-            } else if (forcedResponse != null && forcedResponse.length > 0) {
-                sb.append("\n\n").append("forceVIN mode 09 PID 02: ");
-                for (String hex : forcedResponse){
-                    sb.append(hex).append(" ");
-                }
-                sb.append("\n\n").append("recombined mode 09 PID 02: ");
-                for (String hex : combinedResponse){
-                    sb.append(hex).append(" ");
-                }
-                decodedVin = decodeVIN(forcedResponse);
-                sb.append("\n\n").append("forceVIN mode 09 PID 02 (Decoded): ").append(decodedVin).append("\n\n")
-                        .append(parseVinData(decodedVin));
-            } else {
-                sb.append("VIN: Not detected (Ensure ECU is connected and vehicle supports Mode 09 PID 02)\n");
-            }
-
-            appendToUI(sb.toString(), mileageTextView);
-
-        } catch (RemoteException e) {
-            Log.e(TAG, "Failed to gather physical manufacturer data", e);
-            appendToUI("Error retrieving vehicle specification data.", mileageTextView);
-        }
-    }
-
-    /**
-     * Extracts and decodes manufacturer codes from the VIN string.
-     * Focuses on World Manufacturer ID, Vehicle Descriptor, and Model Year.
-     * VIN Character 4-8 are manufacturer specific, wil add switch cases based on manufacturer later
-     */
-    private String parseVinData(String vin) {
-        if (vin == null || vin.length() < 17) {
-            return "Invalid VIN length for parsing manufacturer codes.";
-        }
-
-        // 1-3: World Manufacturer Identifier (WMI)
-        String wmi = vin.substring(0, 3);
-        // 4-8: Vehicle Descriptor Section (VDS) - Often contains trim/engine/axle codes
-        String vds = vin.substring(3, 8);
-        // 10: Model Year Code
-        char yearCode = vin.charAt(9);
-
-        return "--- Manufacturer Codes ---\n" +
-                "Model Year Code: " + yearCode + "\n" +
-                "WMI (Manufacturer ID): " + wmi + "\n" +
-                "VDS (Trim/Body/Engine Codes): " + vds + "\n";
-    }
-
-    /**
-     * Decodes the raw hex array from Torque into a 17-character VIN string.
-     * Handles sequence headers (0:, 1:) and OBD protocol headers (490201).
-     */
-    private String decodeVIN(String[] hexVIN) {
-        if (hexVIN == null || hexVIN.length == 0) {
-            return "hexVin cannot be decoded";
-        }
-
-        StringBuilder combinedHex = new StringBuilder();
-
-        if(hexVIN[0].contains("014")) {
-            // 1. Clean and combine the hex segments
-            combinedHex.append(hexVIN[1].substring(hexVIN[1].indexOf("0:490201") + 8));
-            combinedHex.append(hexVIN[2].substring(hexVIN[2].indexOf("1:") + 2));
-            combinedHex.append(hexVIN[3].substring(hexVIN[3].indexOf("2:") + 2));
-        }
-
-        // 2. Decode hex string into ASCII characters
-        StringBuilder vinBuilder = new StringBuilder();
-        String finalHex = combinedHex.toString().replaceAll("[^0-9A-Fa-f]", "");
-
-        for (int i = 0; i < finalHex.length() - 1; i += 2) {
-            try {
-                int decimal = Integer.parseInt(finalHex.substring(i, i + 2), 16);
-                // Append if it's a standard printable character (Letter or Digit)
-                if (Character.isLetterOrDigit((char) decimal)) {
-                    vinBuilder.append((char) decimal);
-                }
-            } catch (Exception e) {
-                // Ignore parsing errors for non-hex data
-            }
-        }
-
-        String decoded = vinBuilder.toString();
-
-        // 3. Extract the actual 17-character VIN
-        // The VIN is always the trailing 17 chars of the successful response
-        if (decoded.length() >= 17) {
-            return decoded.substring(decoded.length() - 17);
-        }
-
-        return decoded.isEmpty() ? "hexVin cannot be decoded" : decoded;
-    }
-
-    /**
      * Fetches real-time data from the Torque app via the AIDL interface.
      */
     private void getProfileData() {
@@ -328,7 +203,6 @@ public class PluginActivity extends Activity {
             new Thread(() -> {
                 // Explicitly trigger data gathering once the connection is established
                 getProfileData();     // Clears "Hello" and starts the report
-                gatherManufacturerData(); // Appends manufacturer info
             }).start();
         }
 
@@ -344,13 +218,11 @@ public class PluginActivity extends Activity {
             if ("org.prowl.torque.ACTION_VEHICLE_UPDATED".equals(action)) {
                 // Just connected to adapter, refresh UI, ECU connected
                 new Thread(() -> {
-                    gatherManufacturerData(); // Appends manufacturer info
 //                    updateDistanceTracked(); // Appends distance info
                 }).start();
             } else if ("org.prowl.torque.PROFILE_CHANGED".equals(action)) {
                 // Vehicle profile switched
                 new Thread(() -> {
-                    gatherManufacturerData(); // Appends manufacturer info
 //                    updateDistanceTracked(); // Appends distance info
                 }).start();
             }
