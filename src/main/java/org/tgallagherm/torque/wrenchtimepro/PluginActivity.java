@@ -170,10 +170,16 @@ public class PluginActivity extends Activity {
 
         try {
             String[] profile = torqueService.getVehicleProfileInformation();
+            int index = 0;
             if (profile != null && profile.length > 0) {
-                String profileName = profile[0];
+                displayToUI("Connected to Torque",vehicleInfoTextView);
+                for (String data: profile) {
+                    displayToUI("Profile data[" + index + "]: " + data,vehicleInfoTextView);
+                    index++;
+                }
+//                String profileName = profile[0];
                 // Use displayToUI to clear the "Hello" message and start fresh
-                displayToUI("Connected to Torque, Selected Profile: " + profileName,vehicleInfoTextView);
+//                displayToUI("Connected to Torque, Selected Profile: " + profileName,vehicleInfoTextView);
             }
         } catch (RemoteException e) {
             Log.e(TAG, "Failed to get vehicle profile information", e);
