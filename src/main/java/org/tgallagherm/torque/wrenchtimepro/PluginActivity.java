@@ -124,6 +124,7 @@ public class PluginActivity extends Activity {
 
             // Retrieve the VIN from the profile data
             String vin = torqueService.retrieveProfileData("org.prowl.torque.VIN");
+            String[] rawVin = torqueService.getPIDRawResponse("0902");
 
             StringBuilder sb = new StringBuilder();
             sb.append("=== Physical Vehicle Specifications ===\n\n")
@@ -132,7 +133,27 @@ public class PluginActivity extends Activity {
             if (vin != null && !vin.isEmpty()) {
                 sb.append("VIN: ").append(vin).append("\n\n")
                         .append(parseVinData(vin)); // Extract manufacturer details from VIN
-            } else {
+            }
+            else if(rawVin != null && rawVin.length >0) {
+
+                StringBuilder vinBuilder = new StringBuilder();
+                for (String hex : rawVin) {
+                    // Step through the string 2 characters at a time (1 hex byte)
+                    for (int i = 0; i < hex.length() - 1; i += 2) {
+                        try {
+                            // Convert hex to decimal, then to a character
+                            char c = (char) Integer.parseInt(hex.substring(i, i + 2), 16);
+                            vinBuilder.append(c);
+                        } catch (Exception e) {
+                            // Skip if the substring isn't valid hex
+                        }
+                    }
+                }
+                String decodedVin = vinBuilder.toString().trim();
+                sb.append("rawVIN mode 09 PID 02 (Decoded): ").append(decodedVin).append("\n\n")
+                        .append(parseVinData(decodedVin));
+            }
+            else {
                 sb.append("VIN: Not detected (Ensure ECU is connected)\n");
             }
 
