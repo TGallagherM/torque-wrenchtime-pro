@@ -134,10 +134,13 @@ public class PluginActivity extends Activity {
                 sb.append("VIN: ").append(vin).append("\n\n")
                         .append(parseVinData(vin)); // Extract manufacturer details from VIN
             }
-            else if(rawVin != null && rawVin.length >0) {
-
+            else if(rawVin != null && rawVin.length > 1 ) {
+//                int index = 0;
                 StringBuilder vinBuilder = new StringBuilder();
+//                sb.append("rawVIN:");
                 for (String hex : rawVin) {
+//                    sb.append("index").append(index).append(" ").append(hex);
+//                    index++;
                     // Step through the string 2 characters at a time (1 hex byte)
                     for (int i = 0; i < hex.length() - 1; i += 2) {
                         try {
@@ -150,11 +153,11 @@ public class PluginActivity extends Activity {
                     }
                 }
                 String decodedVin = vinBuilder.toString().trim();
-                sb.append("rawVIN mode 09 PID 02 (Decoded): ").append(decodedVin).append("\n\n")
+                sb.append("\n\n").append("rawVIN mode 09 PID 02 (Decoded): ").append(decodedVin).append("\n\n")
                         .append(parseVinData(decodedVin));
             }
             else {
-                sb.append("VIN: Not detected (Ensure ECU is connected)\n");
+                sb.append("VIN: Not detected (Ensure ECU is connected and vehicle supports Mode 09 PID 02)\n");
             }
 
             appendToUI(sb.toString(),mileageTextView);
