@@ -180,30 +180,60 @@ public class PluginActivity extends Activity {
                 "VDS (Trim/Body/Engine Codes): " + vds + "\n";
     }
 
-    private String decodeVIN(String[] hexVIN){
-        String decodedVin = "";
+    /**
+     * Decodes the raw hex array from Torque into a 17-character VIN string.
+     * Handles sequence headers (0:, 1:) and OBD protocol headers (490201).
+     */
+    private String decodeVIN(String[] hexVIN) {
+        if (hexVIN == null || hexVIN.length == 0) {
+            return "hexVin cannot be decoded";
+        }
 
-        if(hexVIN != null && hexVIN.length == 16){
-            StringBuilder vinBuilder = new StringBuilder();
-            for (String hex : hexVIN) {
-                // Step through the string 2 characters at a time (1 hex byte)
-                for (int i = 0; i < hex.length() - 1; i += 2) {
-                    try {
-                        // Convert hex to decimal, then to a character
-                        char c = (char) Integer.parseInt(hex.substring(i, i + 2), 16);
-                        vinBuilder.append(c);
-                    } catch (Exception e) {
-                        // Skip if the substring isn't valid hex
-                    }
-                }
+        StringBuilder combinedHex = new StringBuilder();
+
+        // 1. Clean and combine the hex segments
+        for (String s : hexVIN) {
+            if (s == null || s.contains("NOT READY")) continue;
+
+            // Strip the multi-frame index (e.g., "0:", "1:")
+            if (s.contains(":")) {
+                s = s.substring(s.indexOf(":") + 1);
             }
-            decodedVin = vinBuilder.toString().trim();
-        }
-        else {
-            decodedVin = "hexVin cannot be decoded";
+
+            // Strip the OBD Mode 09 PID 02 header (4902) and data count (01)
+            // This is usually at the start of the payload in the first frame
+            if (s.startsWith("490201")) {
+                s = s.substring(6);
+            }
+
+            combinedHex.append(s);
         }
 
-        return decodedVin;
+        // 2. Decode hex string into ASCII characters
+        StringBuilder vinBuilder = new StringBuilder();
+        String finalHex = combinedHex.toString().replaceAll("[^0-9A-Fa-f]", "");
+
+        for (int i = 0; i < finalHex.length() - 1; i += 2) {
+            try {
+                int decimal = Integer.parseInt(finalHex.substring(i, i + 2), 16);
+                // Append if it's a standard printable character (Letter or Digit)
+                if (Character.isLetterOrDigit((char) decimal)) {
+                    vinBuilder.append((char) decimal);
+                }
+            } catch (Exception e) {
+                // Ignore parsing errors for non-hex data
+            }
+        }
+
+        String decoded = vinBuilder.toString();
+
+        // 3. Extract the actual 17-character VIN
+        // The VIN is always the trailing 17 chars of the successful response
+        if (decoded.length() >= 17) {
+            return decoded.substring(decoded.length() - 17);
+        }
+
+        return decoded.isEmpty() ? "hexVin cannot be decoded" : decoded;
     }
 
     /**
