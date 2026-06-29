@@ -22,7 +22,7 @@ public class PluginActivity extends Activity {
 
     private boolean isBound = false;
     // Using a simple TextView to output the structured manufacturer details
-    private TextView infoTextView;
+    private TextView vehicleInfoTextView;
     private ITorqueService torqueService;
     private static final String TAG = "WrenchTimePro";
     private static final String DISTANCE_PID = "0131"; // PID for Distance traveled since codes cleared
@@ -78,7 +78,8 @@ public class PluginActivity extends Activity {
      * Initializes the UI components.
      */
     private void initializeViews() {
-        infoTextView = findViewById(R.id.vehicle_info_text);
+        vehicleInfoTextView = findViewById(R.id.vehicle_info_text);
+        mileageTextView = findViewById(R.id.mileage_info_text);
     }
 
     /**
@@ -87,8 +88,8 @@ public class PluginActivity extends Activity {
      */
     private void displayToUI(final String message) {
         runOnUiThread(() -> {
-            if (infoTextView != null) {
-                infoTextView.setText(message);
+            if (vehicleInfoTextView != null) {
+                vehicleInfoTextView.setText(message);
             }
         });
     }
@@ -99,8 +100,8 @@ public class PluginActivity extends Activity {
      */
     private void appendToUI(final String message) {
         runOnUiThread(() -> {
-            if (infoTextView != null) {
-                infoTextView.append("\n" + message);
+            if (vehicleInfoTextView != null) {
+                vehicleInfoTextView.append("\n" + message);
             }
         });
     }
@@ -163,7 +164,7 @@ public class PluginActivity extends Activity {
     /**
      * Fetches real-time data from the Torque app via the AIDL interface.
      */
-    private void updateWithRealData() {
+    private void getProfileData() {
         if (torqueService == null) return;
 
         try {
@@ -246,9 +247,7 @@ public class PluginActivity extends Activity {
 
             new Thread(() -> {
             // Explicitly trigger data gathering once the connection is established
-            updateWithRealData();     // Clears "Hello" and starts the report
-            gatherManufacturerData(); // Appends manufacturer info
-//            updateDistanceTracked();  // Appends distance info
+            getProfileData();     // Clears "Hello" and starts the report
             }).start();
         }
 
@@ -263,7 +262,8 @@ public class PluginActivity extends Activity {
             if ("org.prowl.torque.ACTION_VEHICLE_UPDATED".equals(intent.getAction())) {
                 // Data cache has been updated, refresh UI, ECU connected
                 new Thread(() -> {
-                    gatherManufacturerData();
+                    gatherManufacturerData(); // Appends manufacturer info
+                    updateDistanceTracked(); // Appends distance info
                 }).start();
             }
         }

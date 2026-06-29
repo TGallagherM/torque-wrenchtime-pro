@@ -3,4 +3,5 @@
     <string name="app_name">Torque WrenchTime Pro</string>
     <string name="app_label">WrenchTimePro Reminders</string>
     <string name="welcome_message">Torque WrenchTime Pro Initialized</string>
+    <string name="mileage_info">Mileage goes here</string>
 </resources>
