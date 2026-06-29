@@ -125,6 +125,7 @@ public class PluginActivity extends Activity {
             // Retrieve the VIN from the profile data
             String vin = torqueService.retrieveProfileData("org.prowl.torque.VIN");
             String[] rawVin = torqueService.getPIDRawResponse("0902");
+            String[] forcedResponse = torqueService.sendCommandGetResponse("7DF", "0902");
 
             StringBuilder sb = new StringBuilder();
             sb.append("=== Physical Vehicle Specifications ===\n\n")
@@ -134,13 +135,13 @@ public class PluginActivity extends Activity {
                 sb.append("VIN: ").append(vin).append("\n\n")
                         .append(parseVinData(vin)); // Extract manufacturer details from VIN
             }
-            else if(rawVin != null && rawVin.length > 1 ) {
-//                int index = 0;
+            else if(rawVin != null && rawVin.length > 0 && !rawVin[0].contains("NOT READY") ) {
+                int index = 0;
                 StringBuilder vinBuilder = new StringBuilder();
-//                sb.append("rawVIN:");
+                sb.append("rawVIN:");
                 for (String hex : rawVin) {
-//                    sb.append("index").append(index).append(" ").append(hex);
-//                    index++;
+                    sb.append("index").append(index).append(" ").append(hex);
+                    index++;
                     // Step through the string 2 characters at a time (1 hex byte)
                     for (int i = 0; i < hex.length() - 1; i += 2) {
                         try {
@@ -157,6 +158,39 @@ public class PluginActivity extends Activity {
                         .append(parseVinData(decodedVin));
             }
             else {
+                for (int i = 0; i < 5; i++) {
+                    sb.append("rawVIN wait\n");
+                    rawVin = torqueService.getPIDRawResponse("0902");
+                    if (rawVin != null && rawVin.length > 0 && !rawVin[0].contains("NOT READY")) {
+                        sb.append("rawVIN found ").append(rawVin[0]);
+                        break;
+                    }
+                    try {
+                        Thread.sleep(1000); // Wait 1 second between retries
+                    } catch (Exception e) {
+                        // Skip if the substring isn't valid hex
+                    }
+                }
+                for (int i = 0; i < 5; i++) {
+                    sb.append("forcedVIN wait\n");
+                    forcedResponse = torqueService.sendCommandGetResponse("7DF", "0902");
+                    if (forcedResponse != null && forcedResponse.length > 0 ) {
+                        sb.append("forcedVIN found :");
+                        int index = 0;
+                        for (String hex : forcedResponse) {
+                            sb.append("index").append(index).append(" ").append(hex);
+                            index++;
+                        }
+                        sb.append("\n");
+                        break;
+                    }
+                    try {
+                        Thread.sleep(1000); // Wait 1 second between retries
+                    } catch (Exception e) {
+                        // Skip if the substring isn't valid hex
+                    }
+                }
+
                 sb.append("VIN: Not detected (Ensure ECU is connected and vehicle supports Mode 09 PID 02)\n");
             }
 
