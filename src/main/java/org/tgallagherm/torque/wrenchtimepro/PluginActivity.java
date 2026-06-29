@@ -38,7 +38,7 @@ public class PluginActivity extends Activity {
         initializeViews();
 
         // Methods to run when the activity is created
-        displayToUI("Hello from WrenchTimePro!");
+        displayToUI("Hello from WrenchTimePro!",vehicleInfoTextView);
 //        gatherManufacturerData();
     }
 
@@ -87,10 +87,10 @@ public class PluginActivity extends Activity {
      * Helper to update the UI TextView with provided text.
      * Ensures the update runs on the Main UI thread and appends a newline.
      */
-    private void displayToUI(final String message) {
+    private void displayToUI(final String message, TextView view) {
         runOnUiThread(() -> {
-            if (vehicleInfoTextView != null) {
-                vehicleInfoTextView.setText(message);
+            if (view != null) {
+                view.setText(message);
             }
         });
     }
@@ -99,10 +99,10 @@ public class PluginActivity extends Activity {
      * Helper to append text to the UI TextView.
      * Use this for modular data updates after the initial display.
      */
-    private void appendToUI(final String message) {
+    private void appendToUI(final String message, TextView view) {
         runOnUiThread(() -> {
-            if (vehicleInfoTextView != null) {
-                vehicleInfoTextView.append("\n" + message);
+            if (view != null) {
+                view.append("\n" + message);
             }
         });
     }
@@ -131,11 +131,11 @@ public class PluginActivity extends Activity {
                 sb.append("VIN: Not detected (Ensure ECU is connected)\n");
             }
 
-            appendToUI(sb.toString());
+            appendToUI(sb.toString(),mileageTextView);
 
         } catch (RemoteException e) {
             Log.e(TAG, "Failed to gather physical manufacturer data", e);
-            appendToUI("Error retrieving vehicle specification data.");
+            appendToUI("Error retrieving vehicle specification data.",mileageTextView);
         }
     }
 
@@ -173,7 +173,7 @@ public class PluginActivity extends Activity {
             if (profile != null && profile.length > 0) {
                 String profileName = profile[0];
                 // Use displayToUI to clear the "Hello" message and start fresh
-                displayToUI("Connected to Torque, Selected Profile: " + profileName);
+                displayToUI("Connected to Torque, Selected Profile: " + profileName,vehicleInfoTextView);
             }
         } catch (RemoteException e) {
             Log.e(TAG, "Failed to get vehicle profile information", e);
@@ -218,7 +218,7 @@ public class PluginActivity extends Activity {
                     displayDistance("Distance (Trip)", tripValues[0]);
                 }
             } else {
-                displayToUI("Distance tracking not available.");
+                displayToUI("Distance tracking not available.",vehicleInfoTextView);
             }
 
         } catch (Exception e) {
@@ -238,7 +238,7 @@ public class PluginActivity extends Activity {
         }
 
         String formattedValue = String.format(Locale.US, "%.2f", displayValue);
-        appendToUI(label + ": " + formattedValue + " " + unit);
+        appendToUI(label + ": " + formattedValue + " " + unit,mileageTextView);
     }
 
     private final ServiceConnection connection = new ServiceConnection() {
