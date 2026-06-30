@@ -8,4 +8,7 @@
     <string name="current_mileage">CURRENT TRACKED MILEAGE</string>
     <string name="reminders">Reminders</string>
     <string name="mileage_placeholder">mileage placeholder</string>
+    <string name="reminder_text">Reminder text</string>
+    <string name="new_reminder">New Reminder</string>
+    <string name="add_to_list">Add to List</string>
 </resources>
