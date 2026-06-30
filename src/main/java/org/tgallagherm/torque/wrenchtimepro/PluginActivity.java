@@ -223,20 +223,7 @@ public class PluginActivity extends Activity {
         adapter.notifyItemInserted(reminderList.size() - 1);
     }
 
-    /**
-     * Data model representing a single maintenance reminder.
-     * Stores the name of the service (e.g., "Oil Change") and the specific
-     * mileage at which it should be performed.
-     */
-    public static class Reminder {
-        String name;
-        String miles;
 
-        public Reminder(String name, String miles) {
-            this.name = name;
-            this.miles = miles;
-        }
-    }
 
     /**
      * Adapter for the RecyclerView to manage and display the list of mileage reminders.
