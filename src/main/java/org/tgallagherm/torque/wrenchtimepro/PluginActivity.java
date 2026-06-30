@@ -22,12 +22,12 @@ import android.view.ViewGroup;
 import android.view.LayoutInflater;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 public class PluginActivity extends Activity {
 
@@ -36,10 +36,8 @@ public class PluginActivity extends Activity {
     private TextView mileageTextView;
     private ITorqueService torqueService;
     private static final String TAG = "WrenchTimePro";
-    private static final String DISTANCE_PID = "0131"; // PID for Distance traveled since codes cleared
-    private RecyclerView remindersRecycler;
     private ReminderAdapter adapter;
-    private List<String> reminderList = new ArrayList<>();
+    private final List<String> reminderList = new ArrayList<>();
 
     /**
      * Called when the activity is first created. Initializes the UI, applies dynamic colors,
@@ -68,10 +66,6 @@ public class PluginActivity extends Activity {
         });
 
         initializeViews();
-
-        // Methods to run when the activity is created
-//        displayToUI("Hello from WrenchTimePro!", vehicleInfoTextView);
-//        gatherManufacturerData();
     }
 
     /**
@@ -122,7 +116,7 @@ public class PluginActivity extends Activity {
      */
     private void initializeViews() {
         mileageTextView = findViewById(R.id.mileage_info_text);
-        remindersRecycler = findViewById(R.id.reminders_recycler);
+        RecyclerView remindersRecycler = findViewById(R.id.reminders_recycler);
         // Setup the list
         adapter = new ReminderAdapter(reminderList);
         remindersRecycler.setLayoutManager(new LinearLayoutManager(this));
@@ -170,11 +164,12 @@ public class PluginActivity extends Activity {
     /**
      * Adapter for the RecyclerView to manage and display the list of mileage reminders.
      */
-    private class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.ViewHolder> {
-        private List<String> data;
+    private static class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.ViewHolder> {
+        private final List<String> data;
 
         public ReminderAdapter(List<String> data) { this.data = data; }
 
+        @NonNull
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_reminder, parent, false);
@@ -192,7 +187,7 @@ public class PluginActivity extends Activity {
         /**
          * ViewHolder class for the ReminderAdapter to hold the view for each list item.
          */
-        class ViewHolder extends RecyclerView.ViewHolder {
+        static class ViewHolder extends RecyclerView.ViewHolder {
             TextView textView;
             ViewHolder(View v) { super(v); textView = v.findViewById(R.id.reminder_text); }
         }
@@ -207,7 +202,7 @@ public class PluginActivity extends Activity {
         try {
             String[] profile = torqueService.getVehicleProfileInformation();
             int index = 0;
-            if (profile != null && profile.length > 0) {
+            if (profile != null ) {
 //                displayToUI("Connected to Torque", vehicleInfoTextView);
                 for (String data : profile) {
 //                    appendToUI("Profile data[" + index + "]: " + data, vehicleInfoTextView);
@@ -223,46 +218,21 @@ public class PluginActivity extends Activity {
     }
 
     /**
-     * Retrieves vehicle distance with fallback.
-     * Tries standard OBD PID (0x0131) first; if unsupported, searches
-     * Torque's internal PIDs for "Distance (Trip)".
+     * Retrieves vehicle distance from the specific Torque PID (ff120c,0).
+     * Replaces the placeholder with the current mileage value.
      */
     private void updateDistanceTracked() {
         if (torqueService == null) return;
         try {
-            double[] values = torqueService.getPIDValuesAsDouble(new String[]{DISTANCE_PID});
+            // Target the specific internal Torque PID for Trip Distance
+            String targetPid = "ff120c,0";
+            double[] values = torqueService.getPIDValuesAsDouble(new String[]{targetPid});
 
             if (values != null && values.length > 0 && !Double.isNaN(values[0])) {
-                displayDistance("Distance (OBD)", values[0]);
-                return;
-            }
-
-            String[] allPids = torqueService.listAllPIDs();
-            String tripDistancePidId = null;
-
-            if (allPids != null) {
-                for (String pidId : allPids) {
-                    // Use getPIDInformation to avoid deprecated getDescriptionForPid
-                    String[] info = torqueService.getPIDInformation(new String[]{pidId});
-                    if (info != null && info.length > 0) {
-                        String description = info[0].split(",")[0];
-                        if (description != null && description.toLowerCase().contains("distance (trip)")) {
-                            tripDistancePidId = pidId;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (tripDistancePidId != null) {
-                double[] tripValues = torqueService.getPIDValuesAsDouble(new String[]{tripDistancePidId});
-                if (tripValues != null && tripValues.length > 0 && !Double.isNaN(tripValues[0])) {
-                    displayDistance("Distance (Trip)", tripValues[0]);
-                }
+                displayDistance(values[0]);
             } else {
                 displayToUI("Distance tracking not available.", mileageTextView);
             }
-
         } catch (Exception e) {
             Log.e(TAG, "Error during distance tracking update", e);
         }
@@ -272,12 +242,24 @@ public class PluginActivity extends Activity {
      * Helper to list all available PIDs including those detected by Torque.
      */
     private void listAllPids() {
+        if (torqueService == null) return;
+        
         try {
+            if (!torqueService.hasFullPermissions()) {
+                Log.e(TAG, "Plugin does NOT have full permissions in Torque settings!");
+                runOnUiThread(() -> addReminder("Error: Grant 'Full Permissions' in Torque Settings > Plugins"));
+                return;
+            }
+
             String[] pids = torqueService.listAllPIDsIncludingDetectedPIDs();
             if(pids == null) return;
 
+            Log.d(TAG, "listAllPids called. Service null? " + (torqueService == null));
+            Log.d(TAG, "PIDs found: " + pids.length);
+
             double[] values = torqueService.getPIDValuesAsDouble(pids);
             String[] info = torqueService.getPIDInformation(pids);
+            List<String> fileOutput = new ArrayList<>();
 
             for (int i = 0; i < pids.length; i++) {
                 String label = pids[i]; // Default to raw ID if name search fails
@@ -294,23 +276,46 @@ public class PluginActivity extends Activity {
                 double val = (values != null && i < values.length) ? values[i] : Double.NaN;
                 String formattedValue = Double.isNaN(val) ? "N/A" : String.format(Locale.US, "%.2f", val);
 
-                final String entry = label + ": " + formattedValue;
+                final String entry = "pid=" + pids[i] + " " + label + ": " + formattedValue;
 
                 // 5. Update the list on the UI thread
+                fileOutput.add(entry);
                 runOnUiThread(() -> addReminder(entry));
             }
 
+            savePidsToFile(fileOutput); // <-- Save to disk
         } catch (Exception e) {
             Log.e(TAG, "Error listing all PIDS", e);
         }
     }
 
-
+    /**
+     * Saves the current list of PIDs and their values to a text file
+     * in the app's external files directory.
+     * The file is saved at:
+     * /Android/data/org.tgallagherm.torque.wrenchtimepro/files/torque_pids_log.txt
+     *
+     * @param data A list of formatted strings (e.g., "Engine RPM: 850.00") to write to disk.
+     */
+    private void savePidsToFile(List<String> data) {
+        try {
+            java.io.File file = new java.io.File(getExternalFilesDir(null), "torque_pids_log.txt");
+            java.io.PrintWriter writer = new java.io.PrintWriter(new java.io.FileWriter(file));
+            for (String line : data) {
+                writer.println(line);
+            }
+            writer.close();
+            Log.d(TAG, "PID log saved to: " + file.getAbsolutePath());
+        } catch (java.io.IOException e) {
+            Log.e(TAG, "Failed to save PID log", e);
+        }
+    }
 
     /**
      * Helper to format and display the distance with user preferred units.
+     * Overwrites the previous value in the UI (replacing the placeholder).
      */
-    private void displayDistance(String label, double value) throws RemoteException {
+    private void displayDistance(double value) throws RemoteException {
         String unit = torqueService.getPreferredUnit("km");
         double displayValue = value;
         // If the user's preferred unit is miles, convert km to miles
@@ -319,7 +324,7 @@ public class PluginActivity extends Activity {
         }
 
         String formattedValue = String.format(Locale.US, "%.2f", displayValue);
-        appendToUI(label + ": " + formattedValue + " " + unit, mileageTextView);
+        displayToUI(formattedValue + " " + (unit != null ? unit : ""), mileageTextView);
     }
 
     private final ServiceConnection connection = new ServiceConnection() {
@@ -328,8 +333,11 @@ public class PluginActivity extends Activity {
             torqueService = ITorqueService.Stub.asInterface(service);
 
             new Thread(() -> {
-                // Explicitly trigger data gathering once the connection is established
-//                getProfileData();     // Clears "Hello" and starts the report
+                try {
+                    if (torqueService != null && torqueService.isConnectedToECU()) {
+                        updateDistanceTracked(); // Updates distance info
+                    }
+                } catch (RemoteException e) { Log.e(TAG, "Error connecting to ECU", e); }
             }).start();
         }
 
@@ -342,15 +350,17 @@ public class PluginActivity extends Activity {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
+            Log.d(TAG, "Broadcast received: " + action); // Check Logcat for this!
+
             if ("org.prowl.torque.ACTION_VEHICLE_UPDATED".equals(action)) {
                 // Just connected to adapter, refresh UI, ECU connected
                 new Thread(() -> {
-//                    updateDistanceTracked(); // Appends distance info
+                    updateDistanceTracked(); // Updates distance info
                 }).start();
             } else if ("org.prowl.torque.PROFILE_CHANGED".equals(action)) {
                 // Vehicle profile switched
                 new Thread(() -> {
-//                    updateDistanceTracked(); // Appends distance info
+                    updateDistanceTracked(); // Updates distance info
                 }).start();
             }
         }

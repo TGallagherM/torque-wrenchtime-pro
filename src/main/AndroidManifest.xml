@@ -5,7 +5,7 @@
 		android:allowBackup="true"
 		android:label="@string/app_name"
 		android:supportsRtl="true"
-		android:theme="@android:style/Theme.DeviceDefault.DayNight">
+		android:theme="@style/Theme.WrenchTimePro">
 
 		<activity
 			android:name="org.tgallagherm.torque.wrenchtimepro.PluginActivity"
