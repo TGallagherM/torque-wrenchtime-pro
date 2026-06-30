@@ -196,6 +196,21 @@ public class PluginActivity extends Activity {
     }
 
     /**
+     * Data model representing a single maintenance reminder.
+     * Stores the name of the service (e.g., "Oil Change") and the specific
+     * mileage at which it should be performed.
+     */
+    public static class Reminder {
+        String name;
+        String miles;
+
+        public Reminder(String name, String miles) {
+            this.name = name;
+            this.miles = miles;
+        }
+    }
+
+    /**
      * Adapter for the RecyclerView to manage and display the list of mileage reminders.
      */
     private static class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.ViewHolder> {
@@ -225,6 +240,32 @@ public class PluginActivity extends Activity {
             TextView textView;
             ViewHolder(View v) { super(v); textView = v.findViewById(R.id.reminder_text); }
         }
+    }
+
+    /**
+     * Displays a Material 3 Alert Dialog offering options to modify or remove an entry.
+     *
+     * When an item in the reminder list is long-pressed, this method provides
+     * a "Edit" or "Delete" menu. Choosing "Edit" re-opens the input sheet
+     * with pre-filled data, while "Delete" removes the item with an animation.
+     *
+     * @param position The index of the item within the reminderList to be managed.
+     */
+    private void showEditDeleteOptions(int position) {
+        String[] options = {"Edit", "Delete"};
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle("Manage Reminder")
+                .setItems(options, (dialog, i) -> {
+                    if (i == 0) {
+                        // Edit logic: Re-open the input sheet pre-populated with existing data
+                        showAddReminderBottomSheet(reminderList.get(position), position);
+                    } else {
+                        // Delete logic: Remove from data source and notify adapter for animation
+                        reminderList.remove(position);
+                        adapter.notifyItemRemoved(position);
+                    }
+                })
+                .show();
     }
 
     /**
