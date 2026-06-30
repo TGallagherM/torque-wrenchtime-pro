@@ -1,4 +1,4 @@
-package org.tgallagherm.torque.wrenchtimepro;
+package org.tgallagherm.torque.wrenchtimepro.data;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;

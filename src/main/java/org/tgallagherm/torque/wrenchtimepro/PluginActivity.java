@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 import org.prowl.torque.remote.ITorqueService;
+import org.tgallagherm.torque.wrenchtimepro.data.Reminder;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
