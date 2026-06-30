@@ -38,6 +38,7 @@ public class PluginActivity extends Activity {
     private TextView mileageTextView;
     private ITorqueService torqueService;
     private static final String TAG = "WrenchTimePro";
+    private String currentUnit = "miles"; // Tracks the user's unit preference from Torque, Default to miles
     private ReminderAdapter adapter;
     private final List<Reminder> reminderList = new ArrayList<>();
 
@@ -150,13 +151,21 @@ public class PluginActivity extends Activity {
 
         com.google.android.material.textfield.TextInputEditText nameInput = view.findViewById(R.id.edit_name);
         com.google.android.material.textfield.TextInputEditText milesInput = view.findViewById(R.id.edit_miles);
+        com.google.android.material.textfield.TextInputLayout milesLayout = view.findViewById(R.id.miles_input_layout);
         TextView title = view.findViewById(R.id.sheet_title);
+
+        // Dynamic Hint: "At miles" or "At km" based on regional setting
+        if (milesLayout != null) {
+            milesLayout.setHint(getString(R.string.distance_hint_format, currentUnit));
+        }
 
         // If editing, pre-fill the fields
         if (existing != null) {
             title.setText(R.string.edit_reminder);
             nameInput.setText(existing.name);
             milesInput.setText(existing.miles);
+        }else {
+            title.setText(R.string.new_reminder);
         }
 
         view.findViewById(R.id.save_button).setOnClickListener(v -> {
@@ -244,13 +253,27 @@ public class PluginActivity extends Activity {
             return new ViewHolder(v);
         }
 
+        // Inside ReminderAdapter > onBindViewHolder
         @Override
         public void onBindViewHolder(ViewHolder holder, int position) {
             Reminder item = data.get(position);
             holder.name.setText(item.name);
-            holder.miles.setText(holder.itemView.getContext().getString(R.string.miles_display_format, item.miles));
 
-            // Handle Long Press
+            // Format the reminder mileage using the current region
+            String localizedMiles;
+            try {
+                double m = Double.parseDouble(item.miles);
+                localizedMiles = java.text.NumberFormat.getInstance(Locale.getDefault()).format(m);
+            } catch (Exception e) {
+                localizedMiles = item.miles;
+            }
+
+            // Use the generic format to show "50,000 miles" or "80,000 km"
+            holder.miles.setText(holder.itemView.getContext().getString(
+                    R.string.mileage_display_format,
+                    localizedMiles,
+                    currentUnit));
+
             holder.itemView.setOnLongClickListener(v -> {
                 showEditDeleteOptions(position);
                 return true;
@@ -415,20 +438,27 @@ public class PluginActivity extends Activity {
      * Helper to format and display the distance with user preferred units.
      * Overwrites the previous value in the UI (replacing the placeholder).
      */
+    @SuppressLint("NotifyDataSetChanged")
     private void displayDistance(double value) throws RemoteException {
-        String unit = torqueService.getPreferredUnit("km");
+        // 1. Get the unit from Torque ("km" or "miles")
+        currentUnit = torqueService.getPreferredUnit("km");
         double displayValue = value;
+
         // If the user's preferred unit is miles, convert km to miles
-        if (unit != null && unit.equalsIgnoreCase("miles")) {
+        if (currentUnit != null && currentUnit.equalsIgnoreCase("miles")) {
             displayValue = value * 0.62137119;
         }
 
-        String formattedValue = String.format(Locale.US, "%.2f", displayValue);
+//        Locale.getDefault() ensures the phone's regional formatting is used
+        String formattedValue = String.format(Locale.getDefault(), "%.2f", displayValue);
         String displayText = getString(R.string.mileage_display_format,
                 formattedValue,
-                (unit != null ? unit : ""));
+                (currentUnit != null ? currentUnit : ""));
 
         displayToUI(displayText, mileageTextView);
+
+        // 4. Refresh the reminder list so labels ("miles" -> "km") update immediately
+        runOnUiThread(() -> adapter.notifyDataSetChanged());
     }
 
     private final ServiceConnection connection = new ServiceConnection() {

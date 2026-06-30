@@ -11,6 +11,7 @@
     <string name="reminder_text">Reminder text</string>
     <string name="new_reminder">New Reminder</string>
     <string name="add_to_list">Add to List</string>
+    <string name="distance_hint_format">At %1$s</string>
     <string name="miles_hint">At Miles (e.g. 50,000)</string>
     <string name="name_hint">Maintenance Name (e.g. Oil Change)</string>
     <string name="save_reminder">Save Reminder</string>
