@@ -1,5 +1,7 @@
 package org.tgallagherm.torque.wrenchtimepro;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import org.prowl.torque.remote.ITorqueService;
@@ -17,22 +19,32 @@ import android.os.RemoteException;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.LayoutInflater;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 public class PluginActivity extends Activity {
 
     private boolean isBound = false;
     // Using a simple TextView to output the structured manufacturer details
-    private TextView vehicleInfoTextView;
     private TextView mileageTextView;
     private ITorqueService torqueService;
     private static final String TAG = "WrenchTimePro";
     private static final String DISTANCE_PID = "0131"; // PID for Distance traveled since codes cleared
+    private RecyclerView remindersRecycler;
+    private ReminderAdapter adapter;
+    private List<String> reminderList = new ArrayList<>();
 
+    /**
+     * Called when the activity is first created. Initializes the UI, applies dynamic colors,
+     * and sets up window insets for the FAB.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // 1. Apply dynamic colors FIRST
@@ -58,10 +70,14 @@ public class PluginActivity extends Activity {
         initializeViews();
 
         // Methods to run when the activity is created
-        displayToUI("Hello from WrenchTimePro!", vehicleInfoTextView);
+//        displayToUI("Hello from WrenchTimePro!", vehicleInfoTextView);
 //        gatherManufacturerData();
     }
 
+    /**
+     * Called when the activity is being resumed. Binds to the Torque service
+     * and registers the broadcast receiver for vehicle updates.
+     */
     @Override
     protected void onPostResume() {
         super.onPostResume();
@@ -83,6 +99,10 @@ public class PluginActivity extends Activity {
         );
     }
 
+    /**
+     * Called when the activity is losing focus. Unregisters the Torque broadcast receiver
+     * and unbinds from the Torque service to prevent memory leaks.
+     */
     @Override
     protected void onPause() {
         super.onPause();
@@ -101,8 +121,17 @@ public class PluginActivity extends Activity {
      * Initializes the UI components.
      */
     private void initializeViews() {
-//        vehicleInfoTextView = findViewById(R.id.vehicle_info_text);
         mileageTextView = findViewById(R.id.mileage_info_text);
+        remindersRecycler = findViewById(R.id.reminders_recycler);
+        // Setup the list
+        adapter = new ReminderAdapter(reminderList);
+        remindersRecycler.setLayoutManager(new LinearLayoutManager(this));
+        remindersRecycler.setAdapter(adapter);
+
+        // 2. Setup the FAB to add text
+        findViewById(R.id.add_reminder_fab).setOnClickListener(v -> {
+            addReminder("Oil Change due at 50,000 miles");
+        });
     }
 
     /**
@@ -130,6 +159,46 @@ public class PluginActivity extends Activity {
     }
 
     /**
+     * Adds a new reminder item to the list and notifies the adapter to refresh the UI.
+     * @param text The text of the reminder to add.
+     */
+    private void addReminder(String text) {
+        reminderList.add(text);
+        adapter.notifyItemInserted(reminderList.size() - 1);
+    }
+
+    /**
+     * Adapter for the RecyclerView to manage and display the list of mileage reminders.
+     */
+    private class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.ViewHolder> {
+        private List<String> data;
+
+        public ReminderAdapter(List<String> data) { this.data = data; }
+
+        @Override
+        public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_reminder, parent, false);
+            return new ViewHolder(v);
+        }
+
+        @Override
+        public void onBindViewHolder(ViewHolder holder, int position) {
+            holder.textView.setText(data.get(position));
+        }
+
+        @Override
+        public int getItemCount() { return data.size(); }
+
+        /**
+         * ViewHolder class for the ReminderAdapter to hold the view for each list item.
+         */
+        class ViewHolder extends RecyclerView.ViewHolder {
+            TextView textView;
+            ViewHolder(View v) { super(v); textView = v.findViewById(R.id.reminder_text); }
+        }
+    }
+
+    /**
      * Fetches real-time data from the Torque app via the AIDL interface.
      */
     private void getProfileData() {
@@ -139,9 +208,9 @@ public class PluginActivity extends Activity {
             String[] profile = torqueService.getVehicleProfileInformation();
             int index = 0;
             if (profile != null && profile.length > 0) {
-                displayToUI("Connected to Torque", vehicleInfoTextView);
+//                displayToUI("Connected to Torque", vehicleInfoTextView);
                 for (String data : profile) {
-                    appendToUI("Profile data[" + index + "]: " + data, vehicleInfoTextView);
+//                    appendToUI("Profile data[" + index + "]: " + data, vehicleInfoTextView);
                     index++;
                 }
 //                String profileName = profile[0];
@@ -200,6 +269,45 @@ public class PluginActivity extends Activity {
     }
 
     /**
+     * Helper to list all available PIDs including those detected by Torque.
+     */
+    private void listAllPids() {
+        try {
+            String[] pids = torqueService.listAllPIDsIncludingDetectedPIDs();
+            if(pids == null) return;
+
+            double[] values = torqueService.getPIDValuesAsDouble(pids);
+            String[] info = torqueService.getPIDInformation(pids);
+
+            for (int i = 0; i < pids.length; i++) {
+                String label = pids[i]; // Default to raw ID if name search fails
+
+                // 3. Extract the "Long Name" from the CSV info string
+                if (info != null && i < info.length && info[i] != null) {
+                    String[] parts = info[i].split(",");
+                    if (parts.length > 0 && !parts[0].trim().isEmpty()) {
+                        label = parts[0];
+                    }
+                }
+
+                // 4. Get the value
+                double val = (values != null && i < values.length) ? values[i] : Double.NaN;
+                String formattedValue = Double.isNaN(val) ? "N/A" : String.format(Locale.US, "%.2f", val);
+
+                final String entry = label + ": " + formattedValue;
+
+                // 5. Update the list on the UI thread
+                runOnUiThread(() -> addReminder(entry));
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error listing all PIDS", e);
+        }
+    }
+
+
+
+    /**
      * Helper to format and display the distance with user preferred units.
      */
     private void displayDistance(String label, double value) throws RemoteException {
@@ -221,7 +329,7 @@ public class PluginActivity extends Activity {
 
             new Thread(() -> {
                 // Explicitly trigger data gathering once the connection is established
-                getProfileData();     // Clears "Hello" and starts the report
+//                getProfileData();     // Clears "Hello" and starts the report
             }).start();
         }
 
