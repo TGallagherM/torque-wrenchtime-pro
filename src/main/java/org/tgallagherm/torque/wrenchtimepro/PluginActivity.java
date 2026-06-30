@@ -53,7 +53,11 @@ public class PluginActivity extends Activity {
         // Ensure you have an activity_main.xml layout with a TextView id: vehicle_info_text
         setContentView(R.layout.activity_main);
 
+        com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.topAppBar);
+        toolbar.setTitle(R.string.app_label);
+
         View addReminderFab = findViewById(R.id.add_reminder_fab);
+
         ViewCompat.setOnApplyWindowInsetsListener(addReminderFab, (v, windowInsets) -> {
             int navBarHeight = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
 
