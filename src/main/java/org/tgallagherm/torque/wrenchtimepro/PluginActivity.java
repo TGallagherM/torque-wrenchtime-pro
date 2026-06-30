@@ -3,9 +3,11 @@ package org.tgallagherm.torque.wrenchtimepro;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 import org.prowl.torque.remote.ITorqueService;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -128,8 +130,36 @@ public class PluginActivity extends Activity {
 
         // 2. Setup the FAB to add text
         findViewById(R.id.add_reminder_fab).setOnClickListener(v -> {
-            addReminder("Oil Change due at 50,000 miles");
+            showAddReminderBottomSheet();
         });
+    }
+
+    /**
+     * Displays a Material 3 Bottom Sheet containing an input field to
+     * create a custom mileage reminder.
+     */
+    private void showAddReminderBottomSheet() {
+        com.google.android.material.bottomsheet.BottomSheetDialog bottomSheet =
+                new com.google.android.material.bottomsheet.BottomSheetDialog(this);
+
+        @SuppressLint("InflateParams") View view = getLayoutInflater().inflate(R.layout.layout_add_reminder, null);
+        bottomSheet.setContentView(view);
+
+        com.google.android.material.textfield.TextInputEditText input =
+                view.findViewById(R.id.reminder_input_edit_text);
+
+        view.findViewById(R.id.save_reminder_button).setOnClickListener(v -> {
+            String text = Objects.requireNonNull(input.getText()).toString().trim();
+            if (!text.isEmpty()) {
+                addReminder(text);
+                bottomSheet.dismiss();
+            } else {
+                view.findViewById(R.id.reminder_input_layout).setActivated(true);
+                // Optional: input.setError("Please enter a reminder");
+            }
+        });
+
+        bottomSheet.show();
     }
 
     /**
