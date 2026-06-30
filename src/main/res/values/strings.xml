@@ -14,4 +14,8 @@
     <string name="miles_hint">At Miles (e.g. 50,000)</string>
     <string name="name_hint">Maintenance Name (e.g. Oil Change)</string>
     <string name="save_reminder">Save Reminder</string>
+    <string name="edit_reminder">Edit Reminder</string>
+    <string name="mileage_display_format">%1$s %2$s</string>
+    <string name="miles_display_format">%1$s miles</string>
+    <string name="pid_entry_format">pid=%1$s %2$s: %3$s</string>
 </resources>

@@ -39,7 +39,7 @@ public class PluginActivity extends Activity {
     private ITorqueService torqueService;
     private static final String TAG = "WrenchTimePro";
     private ReminderAdapter adapter;
-    private final List<String> reminderList = new ArrayList<>();
+    private final List<Reminder> reminderList = new ArrayList<>();
 
     /**
      * Called when the activity is first created. Initializes the UI, applies dynamic colors,
@@ -130,32 +130,50 @@ public class PluginActivity extends Activity {
 
         // 2. Setup the FAB to add text
         findViewById(R.id.add_reminder_fab).setOnClickListener(v -> {
-            showAddReminderBottomSheet();
+            showAddReminderBottomSheet(null, -1);
         });
     }
 
     /**
-     * Displays a Material 3 Bottom Sheet containing an input field to
-     * create a custom mileage reminder.
+     * Displays a Material 3 Bottom Sheet to either create a new reminder
+     * or edit an existing one.
+     *
+     * @param existing Optional reminder to edit. Pass null for a new reminder.
+     * @param position The position in the list if editing, otherwise -1.
      */
-    private void showAddReminderBottomSheet() {
+    private void showAddReminderBottomSheet(Reminder existing, int position) {
         com.google.android.material.bottomsheet.BottomSheetDialog bottomSheet =
                 new com.google.android.material.bottomsheet.BottomSheetDialog(this);
 
         @SuppressLint("InflateParams") View view = getLayoutInflater().inflate(R.layout.layout_add_reminder, null);
         bottomSheet.setContentView(view);
 
-        com.google.android.material.textfield.TextInputEditText input =
-                view.findViewById(R.id.reminder_input_edit_text);
+        com.google.android.material.textfield.TextInputEditText nameInput = view.findViewById(R.id.edit_name);
+        com.google.android.material.textfield.TextInputEditText milesInput = view.findViewById(R.id.edit_miles);
+        TextView title = view.findViewById(R.id.sheet_title);
 
-        view.findViewById(R.id.save_reminder_button).setOnClickListener(v -> {
-            String text = Objects.requireNonNull(input.getText()).toString().trim();
-            if (!text.isEmpty()) {
-                addReminder(text);
+        // If editing, pre-fill the fields
+        if (existing != null) {
+            title.setText(R.string.edit_reminder);
+            nameInput.setText(existing.name);
+            milesInput.setText(existing.miles);
+        }
+
+        view.findViewById(R.id.save_button).setOnClickListener(v -> {
+            String name = Objects.requireNonNull(nameInput.getText()).toString().trim();
+            String miles = Objects.requireNonNull(milesInput.getText()).toString().trim();
+
+            if (!name.isEmpty() && !miles.isEmpty()) {
+                if (existing != null) {
+                    // Update existing item
+                    existing.name = name;
+                    existing.miles = miles;
+                    adapter.notifyItemChanged(position);
+                } else {
+                    // Add new item
+                    addReminder(name, miles);
+                }
                 bottomSheet.dismiss();
-            } else {
-                view.findViewById(R.id.reminder_input_layout).setActivated(true);
-                // Optional: input.setError("Please enter a reminder");
             }
         });
 
@@ -188,10 +206,11 @@ public class PluginActivity extends Activity {
 
     /**
      * Adds a new reminder item to the list and notifies the adapter to refresh the UI.
-     * @param text The text of the reminder to add.
+     * @param name The name of the reminder to add.
+     * @param miles The miles of the reminder to add.
      */
-    private void addReminder(String text) {
-        reminderList.add(text);
+    private void addReminder(String name, String miles) {
+        reminderList.add(new Reminder(name, miles));
         adapter.notifyItemInserted(reminderList.size() - 1);
     }
 
@@ -213,10 +232,10 @@ public class PluginActivity extends Activity {
     /**
      * Adapter for the RecyclerView to manage and display the list of mileage reminders.
      */
-    private static class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.ViewHolder> {
-        private final List<String> data;
+    private class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.ViewHolder> {
+        private final List<Reminder> data;
 
-        public ReminderAdapter(List<String> data) { this.data = data; }
+        public ReminderAdapter(List<Reminder> data) { this.data = data; }
 
         @NonNull
         @Override
@@ -227,26 +246,34 @@ public class PluginActivity extends Activity {
 
         @Override
         public void onBindViewHolder(ViewHolder holder, int position) {
-            holder.textView.setText(data.get(position));
+            Reminder item = data.get(position);
+            holder.name.setText(item.name);
+            holder.miles.setText(item.miles + " miles");
+
+            // Handle Long Press
+            holder.itemView.setOnLongClickListener(v -> {
+                showEditDeleteOptions(position);
+                return true;
+            });
         }
 
         @Override
         public int getItemCount() { return data.size(); }
 
-        /**
-         * ViewHolder class for the ReminderAdapter to hold the view for each list item.
-         */
         static class ViewHolder extends RecyclerView.ViewHolder {
-            TextView textView;
-            ViewHolder(View v) { super(v); textView = v.findViewById(R.id.reminder_text); }
+            TextView name, miles;
+            ViewHolder(View v) {
+                super(v);
+                name = v.findViewById(R.id.reminder_name);
+                miles = v.findViewById(R.id.reminder_miles);
+            }
         }
     }
 
     /**
      * Displays a Material 3 Alert Dialog offering options to modify or remove an entry.
-     *
      * When an item in the reminder list is long-pressed, this method provides
-     * a "Edit" or "Delete" menu. Choosing "Edit" re-opens the input sheet
+     * an "Edit" or "Delete" menu. Choosing "Edit" re-opens the input sheet
      * with pre-filled data, while "Delete" removes the item with an animation.
      *
      * @param position The index of the item within the reminderList to be managed.
@@ -322,7 +349,6 @@ public class PluginActivity extends Activity {
         try {
             if (!torqueService.hasFullPermissions()) {
                 Log.e(TAG, "Plugin does NOT have full permissions in Torque settings!");
-                runOnUiThread(() -> addReminder("Error: Grant 'Full Permissions' in Torque Settings > Plugins"));
                 return;
             }
 
@@ -355,7 +381,6 @@ public class PluginActivity extends Activity {
 
                 // 5. Update the list on the UI thread
                 fileOutput.add(entry);
-                runOnUiThread(() -> addReminder(entry));
             }
 
             savePidsToFile(fileOutput); // <-- Save to disk
