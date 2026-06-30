@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 import org.prowl.torque.remote.ITorqueService;
+import org.tgallagherm.torque.wrenchtimepro.data.AppDatabase;
 import org.tgallagherm.torque.wrenchtimepro.data.Reminder;
 
 import android.annotation.SuppressLint;
@@ -29,6 +30,8 @@ import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -72,6 +75,15 @@ public class PluginActivity extends Activity {
 
             return windowInsets;
         });
+        new Thread(() -> {
+            List<Reminder> savedReminders = AppDatabase.getInstance(this).reminderDao().getAll();
+            runOnUiThread(() -> {
+                int start = reminderList.size();
+                reminderList.addAll(savedReminders);
+                // Modern ListAdapter approach: Submit the list to trigger DiffUtil
+                adapter.submitList(new ArrayList<>(reminderList));
+            });
+        }).start();
 
         initializeViews();
     }
@@ -126,7 +138,7 @@ public class PluginActivity extends Activity {
         mileageTextView = findViewById(R.id.mileage_info_text);
         RecyclerView remindersRecycler = findViewById(R.id.reminders_recycler);
         // Setup the list
-        adapter = new ReminderAdapter(reminderList);
+        adapter = new ReminderAdapter();
         remindersRecycler.setLayoutManager(new LinearLayoutManager(this));
         remindersRecycler.setAdapter(adapter);
 
@@ -175,12 +187,16 @@ public class PluginActivity extends Activity {
 
             if (!name.isEmpty() && !miles.isEmpty()) {
                 if (existing != null) {
-                    // Update existing item
                     existing.name = name;
                     existing.miles = miles;
-                    adapter.notifyItemChanged(position);
+                    new Thread(() -> {
+                        // Save changes to database
+                        AppDatabase.getInstance(this).reminderDao().update(existing);
+                        runOnUiThread(() -> {
+                            adapter.submitList(new ArrayList<>(reminderList));
+                        });
+                    }).start();
                 } else {
-                    // Add new item
                     addReminder(name, miles);
                 }
                 bottomSheet.dismiss();
@@ -220,34 +236,58 @@ public class PluginActivity extends Activity {
      * @param miles The miles of the reminder to add.
      */
     private void addReminder(String name, String miles) {
-        reminderList.add(new Reminder(name, miles));
-        adapter.notifyItemInserted(reminderList.size() - 1);
+        Reminder newReminder = new Reminder(name, miles);
+        new Thread(() -> {
+            // 1. Save to database
+            AppDatabase.getInstance(this).reminderDao().insert(newReminder);
+
+            // 2. Update UI on main thread
+            runOnUiThread(() -> {
+                reminderList.add(newReminder); // Add to our local list
+                adapter.submitList(new ArrayList<>(reminderList)); // Refresh UI
+            });
+        }).start();
     }
 
-
-
     /**
-     * Adapter for the RecyclerView to manage and display the list of mileage reminders.
+     * Modern ListAdapter for the RecyclerView.
+     * Automatically handles item animations and background diffing for best performance.
      */
-    private class ReminderAdapter extends RecyclerView.Adapter<ReminderAdapter.ViewHolder> {
-        private final List<Reminder> data;
+    private class ReminderAdapter extends ListAdapter<Reminder, ReminderAdapter.ViewHolder> {
 
-        public ReminderAdapter(List<Reminder> data) { this.data = data; }
+        // DiffUtil handles the complex logic of identifying exactly what changed in the list
+        private static final DiffUtil.ItemCallback<Reminder> DIFF_CALLBACK =
+                new DiffUtil.ItemCallback<Reminder>() {
+                    @Override
+                    public boolean areItemsTheSame(@NonNull Reminder oldItem, @NonNull Reminder newItem) {
+                        // Return true if items represent the same entity (usually compare IDs)
+                        return oldItem.id == newItem.id;
+                    }
+
+                    @Override
+                    public boolean areContentsTheSame(@NonNull Reminder oldItem, @NonNull Reminder newItem) {
+                        // Return true if the visual data is identical
+                        return Objects.equals(oldItem.name, newItem.name) &&
+                                Objects.equals(oldItem.miles, newItem.miles);
+                    }
+                };
+
+        public ReminderAdapter() {
+            super(DIFF_CALLBACK);
+        }
 
         @NonNull
         @Override
-        public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_reminder, parent, false);
             return new ViewHolder(v);
         }
 
-        // Inside ReminderAdapter > onBindViewHolder
         @Override
-        public void onBindViewHolder(ViewHolder holder, int position) {
-            Reminder item = data.get(position);
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            Reminder item = getItem(position); // Use getItem(position) provided by ListAdapter
             holder.name.setText(item.name);
 
-            // Format the reminder mileage using the current region
             String localizedMiles;
             try {
                 double m = Double.parseDouble(item.miles);
@@ -256,7 +296,6 @@ public class PluginActivity extends Activity {
                 localizedMiles = item.miles;
             }
 
-            // Use the generic format to show "50,000 miles" or "80,000 km"
             holder.miles.setText(holder.itemView.getContext().getString(
                     R.string.mileage_display_format,
                     localizedMiles,
@@ -267,9 +306,6 @@ public class PluginActivity extends Activity {
                 return true;
             });
         }
-
-        @Override
-        public int getItemCount() { return data.size(); }
 
         static class ViewHolder extends RecyclerView.ViewHolder {
             TextView name, miles;
@@ -298,9 +334,17 @@ public class PluginActivity extends Activity {
                         // Edit logic: Re-open the input sheet pre-populated with existing data
                         showAddReminderBottomSheet(reminderList.get(position), position);
                     } else {
-                        // Delete logic: Remove from data source and notify adapter for animation
-                        reminderList.remove(position);
-                        adapter.notifyItemRemoved(position);
+                        Reminder toDelete = reminderList.get(position);
+                        new Thread(() -> {
+                            // 1. Remove from database
+                            AppDatabase.getInstance(this).reminderDao().delete(toDelete);
+
+                            // 2. Update UI
+                            runOnUiThread(() -> {
+                                reminderList.remove(position);
+                                adapter.submitList(new ArrayList<>(reminderList));
+                            });
+                        }).start();
                     }
                 })
                 .show();
@@ -331,8 +375,8 @@ public class PluginActivity extends Activity {
      * Helper to format and display the distance with user preferred units.
      * Overwrites the previous value in the UI (replacing the placeholder).
      */
-    @SuppressLint("NotifyDataSetChanged")
     private void displayDistance(double value) throws RemoteException {
+        String oldUnit = currentUnit; // Store previous unit
         // 1. Get the unit from Torque ("km" or "miles")
         currentUnit = torqueService.getPreferredUnit("km");
         double displayValue = value;
@@ -351,7 +395,9 @@ public class PluginActivity extends Activity {
         displayToUI(displayText, mileageTextView);
 
         // 4. Refresh the reminder list so labels ("miles" -> "km") update immediately
-        runOnUiThread(() -> adapter.notifyDataSetChanged());
+        if (!Objects.equals(oldUnit, currentUnit)) {
+            runOnUiThread(() -> adapter.notifyItemRangeChanged(0, adapter.getItemCount()));
+        }
     }
 
     private final ServiceConnection connection = new ServiceConnection() {
