@@ -248,7 +248,7 @@ public class PluginActivity extends Activity {
         public void onBindViewHolder(ViewHolder holder, int position) {
             Reminder item = data.get(position);
             holder.name.setText(item.name);
-            holder.miles.setText(item.miles + " miles");
+            holder.miles.setText(holder.itemView.getContext().getString(R.string.miles_display_format, item.miles));
 
             // Handle Long Press
             holder.itemView.setOnLongClickListener(v -> {
@@ -424,7 +424,11 @@ public class PluginActivity extends Activity {
         }
 
         String formattedValue = String.format(Locale.US, "%.2f", displayValue);
-        displayToUI(formattedValue + " " + (unit != null ? unit : ""), mileageTextView);
+        String displayText = getString(R.string.mileage_display_format,
+                formattedValue,
+                (unit != null ? unit : ""));
+
+        displayToUI(displayText, mileageTextView);
     }
 
     private final ServiceConnection connection = new ServiceConnection() {
