@@ -5,7 +5,7 @@
     <string name="welcome_message">Torque WrenchTime Pro Initialized</string>
     <string name="mileage_info">Mileage goes here</string>
     <string name="add_reminder">Add reminder</string>
-    <string name="current_mileage">CURRENT MILEAGE</string>
+    <string name="current_mileage">CURRENT TRACKED MILEAGE</string>
     <string name="reminders">Reminders</string>
     <string name="mileage_placeholder">mileage placeholder</string>
 </resources>
