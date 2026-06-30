@@ -319,30 +319,6 @@ public class PluginActivity extends Activity {
     }
 
     /**
-     * Fetches real-time data from the Torque app via the AIDL interface.
-     */
-    private void getProfileData() {
-        if (torqueService == null) return;
-
-        try {
-            String[] profile = torqueService.getVehicleProfileInformation();
-            int index = 0;
-            if (profile != null ) {
-//                displayToUI("Connected to Torque", vehicleInfoTextView);
-                for (String data : profile) {
-//                    appendToUI("Profile data[" + index + "]: " + data, vehicleInfoTextView);
-                    index++;
-                }
-//                String profileName = profile[0];
-                // Use displayToUI to clear the "Hello" message and start fresh
-//                displayToUI("Connected to Torque, Selected Profile: " + profileName,vehicleInfoTextView);
-            }
-        } catch (RemoteException e) {
-            Log.e(TAG, "Failed to get vehicle profile information", e);
-        }
-    }
-
-    /**
      * Retrieves vehicle distance from the specific Torque PID (ff120c,0).
      * Replaces the placeholder with the current mileage value.
      */
@@ -360,77 +336,6 @@ public class PluginActivity extends Activity {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error during distance tracking update", e);
-        }
-    }
-
-    /**
-     * Helper to list all available PIDs including those detected by Torque.
-     */
-    private void listAllPids() {
-        if (torqueService == null) return;
-        
-        try {
-            if (!torqueService.hasFullPermissions()) {
-                Log.e(TAG, "Plugin does NOT have full permissions in Torque settings!");
-                return;
-            }
-
-            String[] pids = torqueService.listAllPIDsIncludingDetectedPIDs();
-            if(pids == null) return;
-
-            Log.d(TAG, "listAllPids called. Service null? " + (torqueService == null));
-            Log.d(TAG, "PIDs found: " + pids.length);
-
-            double[] values = torqueService.getPIDValuesAsDouble(pids);
-            String[] info = torqueService.getPIDInformation(pids);
-            List<String> fileOutput = new ArrayList<>();
-
-            for (int i = 0; i < pids.length; i++) {
-                String label = pids[i]; // Default to raw ID if name search fails
-
-                // 3. Extract the "Long Name" from the CSV info string
-                if (info != null && i < info.length && info[i] != null) {
-                    String[] parts = info[i].split(",");
-                    if (parts.length > 0 && !parts[0].trim().isEmpty()) {
-                        label = parts[0];
-                    }
-                }
-
-                // 4. Get the value
-                double val = (values != null && i < values.length) ? values[i] : Double.NaN;
-                String formattedValue = Double.isNaN(val) ? "N/A" : String.format(Locale.US, "%.2f", val);
-
-                final String entry = "pid=" + pids[i] + " " + label + ": " + formattedValue;
-
-                // 5. Update the list on the UI thread
-                fileOutput.add(entry);
-            }
-
-            savePidsToFile(fileOutput); // <-- Save to disk
-        } catch (Exception e) {
-            Log.e(TAG, "Error listing all PIDS", e);
-        }
-    }
-
-    /**
-     * Saves the current list of PIDs and their values to a text file
-     * in the app's external files directory.
-     * The file is saved at:
-     * /Android/data/org.tgallagherm.torque.wrenchtimepro/files/torque_pids_log.txt
-     *
-     * @param data A list of formatted strings (e.g., "Engine RPM: 850.00") to write to disk.
-     */
-    private void savePidsToFile(List<String> data) {
-        try {
-            java.io.File file = new java.io.File(getExternalFilesDir(null), "torque_pids_log.txt");
-            java.io.PrintWriter writer = new java.io.PrintWriter(new java.io.FileWriter(file));
-            for (String line : data) {
-                writer.println(line);
-            }
-            writer.close();
-            Log.d(TAG, "PID log saved to: " + file.getAbsolutePath());
-        } catch (java.io.IOException e) {
-            Log.e(TAG, "Failed to save PID log", e);
         }
     }
 
