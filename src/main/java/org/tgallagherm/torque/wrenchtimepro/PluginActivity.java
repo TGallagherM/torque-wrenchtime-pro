@@ -15,9 +15,13 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 public class PluginActivity extends Activity {
 
@@ -38,6 +42,18 @@ public class PluginActivity extends Activity {
 
         // Ensure you have an activity_main.xml layout with a TextView id: vehicle_info_text
         setContentView(R.layout.activity_main);
+
+        View addReminderFab = findViewById(R.id.add_reminder_fab);
+        ViewCompat.setOnApplyWindowInsetsListener(addReminderFab, (v, windowInsets) -> {
+            int navBarHeight = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
+
+            // Adjust the margin to be the default (e.g. 24dp) PLUS the navigation bar height
+            ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+            mlp.bottomMargin = navBarHeight + (int) (24 * getResources().getDisplayMetrics().density);
+            v.setLayoutParams(mlp);
+
+            return windowInsets;
+        });
 
         initializeViews();
 
