@@ -31,6 +31,9 @@ public class PluginActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 1. Apply dynamic colors FIRST
+        com.google.android.material.color.DynamicColors.applyToActivityIfAvailable(this);
+
         super.onCreate(savedInstanceState);
 
         // Ensure you have an activity_main.xml layout with a TextView id: vehicle_info_text
@@ -82,7 +85,7 @@ public class PluginActivity extends Activity {
      * Initializes the UI components.
      */
     private void initializeViews() {
-        vehicleInfoTextView = findViewById(R.id.vehicle_info_text);
+//        vehicleInfoTextView = findViewById(R.id.vehicle_info_text);
         mileageTextView = findViewById(R.id.mileage_info_text);
     }
 

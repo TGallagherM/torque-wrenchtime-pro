@@ -4,7 +4,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground">
+    android:background="?android:attr/colorBackground"
+    android:theme="@style/Theme.WrenchTimePro">
 
     <!-- 1. Scrolling Content -->
     <androidx.core.widget.NestedScrollView
@@ -53,7 +54,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Reminders"
+                android:text="@string/reminders"
                 android:textAppearance="?attr/textAppearanceTitleLarge"
                 android:layout_marginBottom="8dp" />
 

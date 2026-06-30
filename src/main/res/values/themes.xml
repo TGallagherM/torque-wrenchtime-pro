@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Use Theme.Material3 so your layout's attributes and components work -->
+    <style name="Theme.WrenchTimePro" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Optional: Customize your brand colors here -->
+        <item name="colorPrimary">#6750A4</item>
+    </style>
+</resources>
