@@ -406,33 +406,37 @@ public class PluginActivity extends Activity {
      * through Torque if an interval threshold is reached.
      */
     private void checkReminders(double currentRawKm) {
-        double currentDisplayMiles = currentRawKm;
-        if (currentUnit != null && currentUnit.equalsIgnoreCase("miles")) {
-            currentDisplayMiles *= 0.62137119;
-        }
-
-        final double finalMiles = currentDisplayMiles;
+        // 1. Thread Safety: Create a snapshot copy of the list to avoid crashes
+        // if the user adds/edits a reminder during the check.
+        final List<Reminder> snapshot = new ArrayList<>(reminderList);
 
         new Thread(() -> {
-            boolean dataChanged = false;
-            for (Reminder reminder : reminderList) {
+            for (Reminder reminder : snapshot) {
                 try {
-                    double interval = Double.parseDouble(reminder.miles);
+                    // 2. Accuracy: Convert user's typed interval to KM internally
+                    double intervalVal = Double.parseDouble(reminder.miles);
+                    double intervalInKm = (currentUnit != null && currentUnit.equalsIgnoreCase("miles"))
+                            ? intervalVal / 0.62137119
+                            : intervalVal;
 
-                    // Initialize if never notified
-                    if (reminder.lastNotifiedMileage == -1) {
-                        reminder.lastNotifiedMileage = finalMiles;
+                    // 3. Accuracy (Trip Reset): If mileage reset to 0, reset our tracking point
+                    if (currentRawKm < reminder.lastNotifiedMileage) {
+                        reminder.lastNotifiedMileage = currentRawKm;
                         AppDatabase.getInstance(this).reminderDao().update(reminder);
                     }
-                    // Check if interval has been gained
-                    else if (finalMiles - reminder.lastNotifiedMileage >= interval) {
-                        sendTorqueMessage(reminder.name);
-                        reminder.lastNotifiedMileage = finalMiles;
+                    // 4. Initialization
+                    else if (reminder.lastNotifiedMileage == -1) {
+                        reminder.lastNotifiedMileage = currentRawKm;
                         AppDatabase.getInstance(this).reminderDao().update(reminder);
-                        dataChanged = true;
+                    }
+                    // 5. Trigger Notification (Calculated purely in KM)
+                    else if (currentRawKm - reminder.lastNotifiedMileage >= intervalInKm) {
+                        sendTorqueMessage(reminder.name);
+                        reminder.lastNotifiedMileage = currentRawKm;
+                        AppDatabase.getInstance(this).reminderDao().update(reminder);
                     }
                 } catch (NumberFormatException e) {
-                    Log.e(TAG, "Invalid mileage format for: " + reminder.name);
+                    Log.e(TAG, "Invalid format: " + reminder.name);
                 }
             }
         }).start();
