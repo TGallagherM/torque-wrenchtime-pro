@@ -78,7 +78,6 @@ public class PluginActivity extends Activity {
         new Thread(() -> {
             List<Reminder> savedReminders = AppDatabase.getInstance(this).reminderDao().getAll();
             runOnUiThread(() -> {
-                int start = reminderList.size();
                 reminderList.addAll(savedReminders);
                 // Modern ListAdapter approach: Submit the list to trigger DiffUtil
                 adapter.submitList(new ArrayList<>(reminderList));
@@ -214,18 +213,6 @@ public class PluginActivity extends Activity {
         runOnUiThread(() -> {
             if (view != null) {
                 view.setText(message);
-            }
-        });
-    }
-
-    /**
-     * Helper to append text to the UI TextView.
-     * Use this for modular data updates after the initial display.
-     */
-    private void appendToUI(final String message, TextView view) {
-        runOnUiThread(() -> {
-            if (view != null) {
-                view.append("\n" + message);
             }
         });
     }
