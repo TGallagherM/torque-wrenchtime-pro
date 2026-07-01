@@ -9,7 +9,7 @@ import android.content.Context;
  * The Room database for the application.
  * Annotated with @Database to define entities and the version number.
  */
-@Database(entities = {Reminder.class}, version = 1)
+@Database(entities = {Reminder.class}, version = 2)
 public abstract class AppDatabase extends RoomDatabase {
     public abstract ReminderDao reminderDao();
 
@@ -25,6 +25,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (instance == null) {
                     instance = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "wrenchtime_database")
+                            .fallbackToDestructiveMigration()
                             .build();
                 }
             }

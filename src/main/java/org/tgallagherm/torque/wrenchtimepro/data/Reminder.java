@@ -15,6 +15,7 @@ public class Reminder {
 
     public String name;
     public String miles;
+    public double lastNotifiedMileage = -1;
 
     public Reminder(String name, String miles) {
         this.name = name;

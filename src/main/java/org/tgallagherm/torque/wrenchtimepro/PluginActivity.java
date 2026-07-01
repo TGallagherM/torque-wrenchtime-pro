@@ -363,6 +363,7 @@ public class PluginActivity extends Activity {
 
             if (values != null && values.length > 0 && !Double.isNaN(values[0])) {
                 displayDistance(values[0]);
+                checkReminders(values[0]);
             } else {
                 displayToUI("Distance tracking not available.", mileageTextView);
             }
@@ -398,6 +399,54 @@ public class PluginActivity extends Activity {
         if (!Objects.equals(oldUnit, currentUnit)) {
             runOnUiThread(() -> adapter.notifyItemRangeChanged(0, adapter.getItemCount()));
         }
+    }
+
+    /**
+     * Checks all reminders against current mileage and sends a notification
+     * through Torque if an interval threshold is reached.
+     */
+    private void checkReminders(double currentRawKm) {
+        double currentDisplayMiles = currentRawKm;
+        if (currentUnit != null && currentUnit.equalsIgnoreCase("miles")) {
+            currentDisplayMiles *= 0.62137119;
+        }
+
+        final double finalMiles = currentDisplayMiles;
+
+        new Thread(() -> {
+            boolean dataChanged = false;
+            for (Reminder reminder : reminderList) {
+                try {
+                    double interval = Double.parseDouble(reminder.miles);
+
+                    // Initialize if never notified
+                    if (reminder.lastNotifiedMileage == -1) {
+                        reminder.lastNotifiedMileage = finalMiles;
+                        AppDatabase.getInstance(this).reminderDao().update(reminder);
+                    }
+                    // Check if interval has been gained
+                    else if (finalMiles - reminder.lastNotifiedMileage >= interval) {
+                        sendTorqueMessage(reminder.name);
+                        reminder.lastNotifiedMileage = finalMiles;
+                        AppDatabase.getInstance(this).reminderDao().update(reminder);
+                        dataChanged = true;
+                    }
+                } catch (NumberFormatException e) {
+                    Log.e(TAG, "Invalid mileage format for: " + reminder.name);
+                }
+            }
+        }).start();
+    }
+
+    /**
+     * Sends a message broadcast that Torque Pro receives and displays
+     * (or speaks aloud) to the user.
+     */
+    private void sendTorqueMessage(String reminderName) {
+        Intent intent = new Intent("org.prowl.torque.MESSAGE");
+        // This is the standard extra key for Torque messages
+        intent.putExtra("message", "Maintenance Due: " + reminderName);
+        sendBroadcast(intent);
     }
 
     private final ServiceConnection connection = new ServiceConnection() {
