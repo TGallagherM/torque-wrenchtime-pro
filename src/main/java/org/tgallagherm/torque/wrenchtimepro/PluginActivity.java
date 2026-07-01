@@ -143,7 +143,7 @@ public class PluginActivity extends Activity {
 
         // 2. Setup the FAB to add text
         findViewById(R.id.add_reminder_fab).setOnClickListener(v -> {
-            showAddReminderBottomSheet(null, -1);
+            showAddReminderBottomSheet(null);
         });
     }
 
@@ -152,9 +152,8 @@ public class PluginActivity extends Activity {
      * or edit an existing one.
      *
      * @param existing Optional reminder to edit. Pass null for a new reminder.
-     * @param position The position in the list if editing, otherwise -1.
      */
-    private void showAddReminderBottomSheet(Reminder existing, int position) {
+    private void showAddReminderBottomSheet(Reminder existing) {
         com.google.android.material.bottomsheet.BottomSheetDialog bottomSheet =
                 new com.google.android.material.bottomsheet.BottomSheetDialog(this);
 
@@ -289,7 +288,14 @@ public class PluginActivity extends Activity {
                     currentUnit));
 
             holder.itemView.setOnLongClickListener(v -> {
-                showEditDeleteOptions(position);
+                // Use the modern, non-deprecated method
+                int currentPos = holder.getBindingAdapterPosition();
+
+                // Always check for NO_POSITION (-1) to prevent crashes if the user
+                // clicks while an animation is removing the item
+                if (currentPos != RecyclerView.NO_POSITION) {
+                    showEditDeleteOptions(currentPos);
+                }
                 return true;
             });
         }
@@ -319,7 +325,7 @@ public class PluginActivity extends Activity {
                 .setItems(options, (dialog, i) -> {
                     if (i == 0) {
                         // Edit logic: Re-open the input sheet pre-populated with existing data
-                        showAddReminderBottomSheet(reminderList.get(position), position);
+                        showAddReminderBottomSheet(reminderList.get(position));
                     } else {
                         Reminder toDelete = reminderList.get(position);
                         new Thread(() -> {
